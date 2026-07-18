@@ -1,32 +1,14 @@
-# Changelog
+# BLACKTERM v7.2.1 — Case Open Preference
 
-All notable changes to BLACKTERM Platform will be documented here.
+## Added
 
-## [6.0.0] - Public Preview
+- Post-scan prompt with **OPEN CASE** and **STAY ON SCAN** actions.
+- Persistent setting for autonomous scan behavior:
+  - Ask after every scan
+  - Always open the new case
+  - Stay on the scan page
 
-### Added
+## Changed
 
-- Mission Control operational dashboard
-- Live intelligence feed with timestamped event cards
-- Animated counters and event-activity graph
-- Platform load and threat-level indicators
-- Reactive AI analyst panel and context score
-- Case/activity timeline
-- Toast notification system
-- Animated dock interactions
-- Cinematic startup sequence
-- Persistent SQLite event history
-- Recon scan history and reporting foundation
-
-### Fixed
-
-- Qt list-item foreground color handling
-- `QBrush` and `QColor` imports
-- Python `__future__` import ordering
-- UTF-8 symbol corruption in event-feed text
-- Qt `event()` method name collision
-- Mission Control initialization issues
-
-### Notes
-
-This is the first public preview. Interfaces and internal APIs may change while the platform is under active development.
+- Newly created cases are still refreshed and selected automatically.
+- BLACKTERM no longer forces the Investigation Workspace to open after every scan unless configured to do so.

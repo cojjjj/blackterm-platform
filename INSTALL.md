@@ -1,14 +1,13 @@
-# Install BLACKTERM v6.0
+# Installation
 
-1. Close BLACKTERM.
-2. Open this update pack.
-3. Drag the `blackterm_recon` and `tests` folders into the root of your main project.
-4. Choose **Replace the files in the destination**.
-5. Run:
+Close BLACKTERM and copy the `blackterm_recon` and `tests` folders into the root of the existing project. Choose **Replace the files in the destination**.
 
 ```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
 python -m pytest
 blackterm gui
 ```
 
-No database deletion or dependency reinstall is required for this update.
+The default behavior is **Ask after every scan**. Change it under **Settings → After autonomous scan**.

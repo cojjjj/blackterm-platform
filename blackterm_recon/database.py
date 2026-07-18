@@ -6,7 +6,7 @@ import sqlite3
 from .models import PortResult, ScanResult
 
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 7
 
 SCHEMA = """
 PRAGMA foreign_keys = ON;
@@ -48,6 +48,31 @@ CREATE TABLE IF NOT EXISTS case_notes (
     case_id INTEGER NOT NULL,
     created_at TEXT NOT NULL,
     note TEXT NOT NULL,
+    FOREIGN KEY(case_id) REFERENCES cases(id) ON DELETE CASCADE
+);
+
+
+
+CREATE TABLE IF NOT EXISTS case_evidence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    evidence_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL DEFAULT '',
+    file_path TEXT NOT NULL DEFAULT '',
+    sha256 TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY(case_id) REFERENCES cases(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS case_timeline (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '',
     FOREIGN KEY(case_id) REFERENCES cases(id) ON DELETE CASCADE
 );
 
@@ -193,7 +218,9 @@ class ScanRepository:
                 """,
                 (name.strip(), description.strip(), datetime.now(timezone.utc).isoformat()),
             )
-            return int(cursor.lastrowid)
+            case_id = int(cursor.lastrowid)
+        self.add_case_timeline(case_id, "CASE", "Investigation created", description.strip())
+        return case_id
 
     def list_cases(self) -> list[dict]:
         with self.connect() as conn:
@@ -215,6 +242,7 @@ class ScanRepository:
                 "INSERT OR IGNORE INTO case_scans(case_id, scan_id) VALUES (?, ?)",
                 (case_id, scan_id),
             )
+        self.add_case_timeline(case_id, "SCAN", f"Scan #{scan_id} attached")
 
     def case_scans(self, case_id: int) -> list[dict]:
         with self.connect() as conn:
@@ -244,7 +272,9 @@ class ScanRepository:
                 """,
                 (case_id, datetime.now(timezone.utc).isoformat(), note.strip()),
             )
-            return int(cursor.lastrowid)
+            note_id = int(cursor.lastrowid)
+        self.add_case_timeline(case_id, "NOTE", "Investigation note added", note.strip()[:240])
+        return note_id
 
     def case_notes(self, case_id: int) -> list[dict]:
         with self.connect() as conn:
@@ -298,3 +328,77 @@ class ScanRepository:
             "open_ports": open_ports,
             "last_scan": last["finished_at"] if last else "Never",
         }
+
+
+    def update_case_status(self, case_id: int, status: str) -> None:
+        allowed = {"OPEN", "ACTIVE", "REVIEW", "CLOSED"}
+        status = status.upper()
+        if status not in allowed:
+            raise ValueError(f"Unsupported case status: {status}")
+        with self.connect() as conn:
+            conn.execute("UPDATE cases SET status=? WHERE id=?", (status, case_id))
+        self.add_case_timeline(case_id, "STATUS", f"Status changed to {status}")
+
+    def add_case_evidence(self, case_id: int, evidence_type: str, title: str,
+                          source: str = "", content: str = "", file_path: str = "") -> int:
+        from datetime import datetime, timezone
+        from hashlib import sha256
+        digest_source = content.encode("utf-8", errors="replace")
+        if file_path:
+            try:
+                digest_source = Path(file_path).expanduser().read_bytes()
+            except OSError:
+                pass
+        digest = sha256(digest_source).hexdigest()
+        with self.connect() as conn:
+            cursor = conn.execute(
+                """INSERT INTO case_evidence(
+                    case_id, created_at, evidence_type, title, source,
+                    content, file_path, sha256
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (case_id, datetime.now(timezone.utc).isoformat(), evidence_type.upper(),
+                 title.strip(), source.strip(), content, file_path, digest),
+            )
+            evidence_id = int(cursor.lastrowid)
+        self.add_case_timeline(case_id, "EVIDENCE", f"Evidence added: {title}", evidence_type.upper())
+        return evidence_id
+
+    def case_evidence(self, case_id: int) -> list[dict]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM case_evidence WHERE case_id=? ORDER BY id DESC", (case_id,)
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def add_case_timeline(self, case_id: int, event_type: str, title: str, detail: str = "") -> int:
+        from datetime import datetime, timezone
+        with self.connect() as conn:
+            cursor = conn.execute(
+                """INSERT INTO case_timeline(case_id, created_at, event_type, title, detail)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (case_id, datetime.now(timezone.utc).isoformat(), event_type.upper(), title, detail),
+            )
+            return int(cursor.lastrowid)
+
+    def case_timeline(self, case_id: int) -> list[dict]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM case_timeline WHERE case_id=? ORDER BY id ASC", (case_id,)
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def search_cases(self, query: str) -> list[dict]:
+        pattern = f"%{query.strip()}%"
+        with self.connect() as conn:
+            rows = conn.execute(
+                """SELECT DISTINCT c.id, c.name, c.description, c.created_at, c.status,
+                          (SELECT COUNT(*) FROM case_scans cs WHERE cs.case_id=c.id) AS scan_count
+                   FROM cases c
+                   LEFT JOIN case_notes n ON n.case_id=c.id
+                   LEFT JOIN case_evidence e ON e.case_id=c.id
+                   WHERE c.name LIKE ? OR c.description LIKE ? OR n.note LIKE ?
+                      OR e.title LIKE ? OR e.content LIKE ?
+                   ORDER BY c.id DESC""",
+                (pattern, pattern, pattern, pattern, pattern),
+            ).fetchall()
+        return [dict(row) for row in rows]

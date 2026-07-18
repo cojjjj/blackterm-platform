@@ -25,6 +25,7 @@ class AppConfig:
     plugin_directory: str = str(DEFAULT_PLUGIN_DIR)
     allow_public_targets: bool = False
     theme: str = "Purple Void"
+    case_open_behavior: str = "ask"
 
     def validate(self) -> None:
         if not 0.05 <= self.timeout <= 30:
@@ -34,6 +35,9 @@ class AppConfig:
         if not 0.05 <= self.banner_timeout <= 30:
             raise ValueError("banner_timeout must be between 0.05 and 30 seconds")
         self.log_level = self.log_level.upper()
+        self.case_open_behavior = self.case_open_behavior.lower()
+        if self.case_open_behavior not in {"ask", "always", "never"}:
+            raise ValueError("case_open_behavior must be ask, always, or never")
 
     def to_dict(self) -> dict:
         return asdict(self)

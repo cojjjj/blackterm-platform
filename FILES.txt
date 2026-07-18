@@ -1,10 +1,4 @@
-REPLACE
-blackterm_recon/desktop/dock.py
-blackterm_recon/desktop/event_feed.py
-blackterm_recon/desktop/main_window.py
-blackterm_recon/desktop/startup.py
-blackterm_recon/desktop/widgets.py
-blackterm_recon/desktop/pages/mission_control.py
-
-ADD
-tests/test_v60_living_platform.py
+ADD     blackterm_recon/investigation_engine.py
+ADD     blackterm_recon/desktop/autonomous.py
+REPLACE blackterm_recon/desktop/main_window.py
+ADD     tests/test_v71_autonomous_investigation.py

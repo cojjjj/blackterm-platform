@@ -1,3 +1,3 @@
 """BLACKTERM Mission Control Platform."""
 
-__version__ = "5.3.0"
+__version__ = "7.0.0"

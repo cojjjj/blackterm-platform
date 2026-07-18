@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QEasingCurve, QEvent, QPropertyAnimation
-from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QHBoxLayout, QMainWindow, QMessageBox, QStackedWidget,
+    QVBoxLayout, QWidget,
+)
 
 from .command_bar import CommandBar
 from .dock import Dock
@@ -20,6 +23,8 @@ from .pages.settings import SettingsPage
 from .pages.terminal import TerminalPage
 from .theme import stylesheet
 from .widgets import ParticleField
+from .autonomous import AutonomousInvestigation
+from .event_bridge import QtEventBridge
 
 
 class MainWindow(QMainWindow):
@@ -29,7 +34,7 @@ class MainWindow(QMainWindow):
         self.operator = operator
         self.event_bus = event_bus
         self.event_store = event_store
-        self.setWindowTitle("BLACKTERM Platform v6.0 // Living Platform")
+        self.setWindowTitle("BLACKTERM Platform v7.2.1 // Case Open Preference")
         self.resize(1540, 920)
         self.setMinimumSize(1160, 740)
         self.setMouseTracking(True)
@@ -50,9 +55,10 @@ class MainWindow(QMainWindow):
         )
         self.dashboard = DashboardPage(engine, operator)
         self.scan = ScanPage(engine)
+        self.autonomous = AutonomousInvestigation(engine, event_bus, self)
         self.network = NetworkPage(engine)
         self.terminal = TerminalPage(engine, self.navigate_to_label)
-        self.cases = CasesPage(engine)
+        self.cases = CasesPage(engine, event_bus)
         self.events = EventFeedPage(event_bus, event_store)
         self.history = HistoryPage(engine)
         self.reports = ReportsPage(engine)
@@ -93,8 +99,9 @@ class MainWindow(QMainWindow):
         layout.addWidget(content, 1)
 
         self.toast = Toast(root_widget)
-        if self.event_bus:
-            self.event_bus.subscribe(self.toast.show_event)
+        self.event_bridge = QtEventBridge(self.event_bus, self) if self.event_bus else None
+        if self.event_bridge:
+            self.event_bridge.connect(self.toast.show_event)
             from ..events import EventLevel
             self.event_bus.emit(
                 "platform",
@@ -105,11 +112,54 @@ class MainWindow(QMainWindow):
             )
 
         self.scan.scan_started.connect(self.network.scan_started)
+        self.scan.scan_started.connect(self.autonomous.scan_started)
         self.scan.scan_port_observed.connect(self.network.scan_progress)
+        self.scan.scan_port_observed.connect(self.autonomous.port_observed)
         self.scan.scan_completed.connect(self.network.scan_finished)
+        self.scan.scan_completed.connect(self.autonomous.scan_completed)
+        self.scan.scan_completed.connect(lambda scan_id, result: self.cases.refresh())
+        self.autonomous.case_created.connect(self.handle_case_created)
         self.settings.theme_changed.connect(self.apply_theme)
         self.apply_theme(engine.config.theme)
         root_widget.installEventFilter(self)
+
+
+    def handle_case_created(self, case_id: int):
+        """Refresh the case list and honor the operator's post-scan preference."""
+        self.cases.refresh()
+        self.cases.select_case(case_id)
+
+        behavior = getattr(self.engine.config, "case_open_behavior", "ask")
+        if behavior == "always":
+            self.open_case(case_id)
+            return
+        if behavior == "never":
+            return
+
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Investigation Ready")
+        dialog.setIcon(QMessageBox.Information)
+        dialog.setText(f"Case #{case_id} was created from the completed scan.")
+        dialog.setInformativeText("Open the investigation now or remain on the scan page?")
+        open_button = dialog.addButton("OPEN CASE", QMessageBox.AcceptRole)
+        dialog.addButton("STAY ON SCAN", QMessageBox.RejectRole)
+        dialog.setDefaultButton(open_button)
+        dialog.exec()
+
+        if dialog.clickedButton() is open_button:
+            self.open_case(case_id)
+
+
+    def open_case(self, case_id: int):
+        self.navigate_to_label("CASES")
+        self.cases.refresh()
+        self.cases.select_case(case_id)
+        self.cases.load_case()
+
+    def closeEvent(self, event):
+        if getattr(self, "event_bridge", None):
+            self.event_bridge.close()
+        super().closeEvent(event)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
