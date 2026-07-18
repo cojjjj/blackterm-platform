@@ -1,0 +1,10 @@
+REPLACE
+blackterm_recon/desktop/dock.py
+blackterm_recon/desktop/event_feed.py
+blackterm_recon/desktop/main_window.py
+blackterm_recon/desktop/startup.py
+blackterm_recon/desktop/widgets.py
+blackterm_recon/desktop/pages/mission_control.py
+
+ADD
+tests/test_v60_living_platform.py
