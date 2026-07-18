@@ -1,0 +1,23 @@
+{
+  "version": "7.0.0",
+  "generated_at": "2026-07-18T04:05:41+00:00",
+  "total_lines": 8509,
+  "source_lines": 7445,
+  "python_lines": 7949,
+  "test_lines": 504,
+  "documentation_lines": 467,
+  "total_files": 96,
+  "python_files": 82,
+  "test_files": 22,
+  "modules": 48,
+  "desktop_pages": 12,
+  "commits": 4,
+  "contributors": 2,
+  "tests_collected": 45,
+  "languages": {
+    "Python": 7949,
+    "Markdown": 467,
+    "YAML": 59,
+    "TOML": 34
+  }
+}

@@ -1,14 +1,21 @@
-# BLACKTERM v7.2.1 — Case Open Preference
+# BLACKTERM v7.2.2
 
 ## Added
 
-- Post-scan prompt with **OPEN CASE** and **STAY ON SCAN** actions.
-- Persistent setting for autonomous scan behavior:
-  - Ask after every scan
-  - Always open the new case
-  - Stay on the scan page
+- Repository statistics generator
+- Terminal-style README telemetry block
+- Live SVG statistics card
+- Machine-readable JSON statistics snapshot
+- Automatic GitHub Action refresh after pushes
+- Tests for stable README marker handling and line counting
 
-## Changed
+## Metrics
 
-- Newly created cases are still refreshed and selected automatically.
-- BLACKTERM no longer forces the Investigation Workspace to open after every scan unless configured to do so.
+- Source and total lines
+- Python and test lines
+- Documentation lines
+- Files and modules
+- Desktop pages
+- Discovered tests
+- Git commits and contributors
+- Language line totals

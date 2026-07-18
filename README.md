@@ -126,3 +126,39 @@ Released under the [MIT License](LICENSE).
 Built by [cojjjj](https://github.com/cojjjj) — active development, public preview.
 
 </div>
+
+<!-- BLACKTERM_STATS_START -->
+## `blackterm> project --stats`
+
+```text
+╔══════════════════════════════════════════════════════════════╗
+║                 BLACKTERM PLATFORM v7.0.0                 ║
+╚══════════════════════════════════════════════════════════════╝
+
+ STATUS............... ONLINE
+ DEVELOPMENT.......... ACTIVE
+ SOURCE LINES......... 7,445
+ TOTAL TRACKED LINES.. 8,509
+ PYTHON LINES......... 7,949
+ TEST LINES........... 504
+ DOCUMENTATION LINES.. 467
+
+ PYTHON FILES......... 82
+ PROJECT FILES........ 96
+ MODULES.............. 48
+ DESKTOP PAGES........ 12
+ TESTS DISCOVERED..... 45
+ COMMITS.............. 4
+ CONTRIBUTORS......... 2
+
+ LANGUAGE TELEMETRY
+ Python: 7,949 • Markdown: 467 • YAML: 59 • TOML: 34
+
+ LAST REFRESH......... 2026-07-18T04:05:41+00:00
+ NEXT OBJECTIVE....... AUTONOMOUS OSINT ENGINE
+```
+
+<p align="center">
+  <img src="assets/project-stats.svg" alt="BLACKTERM live project statistics" />
+</p>
+<!-- BLACKTERM_STATS_END -->
