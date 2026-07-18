@@ -10,7 +10,7 @@
   <path d="M0 58 H500" stroke="#242b43"/>
   <circle cx="34" cy="30" r="5" fill="#00f5a0" filter="url(#glow)"/>
   <text x="50" y="36" class="title">BLACKTERM // LIVE BUILD TELEMETRY</text>
-  <text x="34" y="105" class="label">VERSION</text><text x="466" y="105" text-anchor="end" class="value">v7.0.0</text><text x="34" y="139" class="label">SOURCE LINES</text><text x="466" y="139" text-anchor="end" class="value">7,445</text><text x="34" y="173" class="label">PYTHON FILES</text><text x="466" y="173" text-anchor="end" class="value">82</text><text x="34" y="207" class="label">MODULES</text><text x="466" y="207" text-anchor="end" class="value">48</text><text x="34" y="241" class="label">TESTS</text><text x="466" y="241" text-anchor="end" class="value">45</text><text x="34" y="275" class="label">COMMITS</text><text x="466" y="275" text-anchor="end" class="value">4</text>
+  <text x="34" y="105" class="label">VERSION</text><text x="466" y="105" text-anchor="end" class="value">v7.0.0</text><text x="34" y="139" class="label">SOURCE LINES</text><text x="466" y="139" text-anchor="end" class="value">7,445</text><text x="34" y="173" class="label">PYTHON FILES</text><text x="466" y="173" text-anchor="end" class="value">82</text><text x="34" y="207" class="label">MODULES</text><text x="466" y="207" text-anchor="end" class="value">48</text><text x="34" y="241" class="label">TESTS</text><text x="466" y="241" text-anchor="end" class="value">47</text><text x="34" y="275" class="label">COMMITS</text><text x="466" y="275" text-anchor="end" class="value">5</text>
   <path d="M26 287 H474" stroke="#242b43"/>
   <text x="34" y="313" class="footer">STATUS: ONLINE</text>
   <text x="466" y="313" text-anchor="end" class="footer">UPDATED 2026-07-18</text>

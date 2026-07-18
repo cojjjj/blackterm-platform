@@ -1,23 +1,24 @@
 {
   "version": "7.0.0",
-  "generated_at": "2026-07-18T04:05:41+00:00",
-  "total_lines": 8509,
+  "generated_at": "2026-07-18T04:06:40+00:00",
+  "total_lines": 8568,
   "source_lines": 7445,
   "python_lines": 7949,
   "test_lines": 504,
-  "documentation_lines": 467,
-  "total_files": 96,
+  "documentation_lines": 503,
+  "total_files": 97,
   "python_files": 82,
   "test_files": 22,
   "modules": 48,
   "desktop_pages": 12,
-  "commits": 4,
+  "commits": 5,
   "contributors": 2,
-  "tests_collected": 45,
+  "tests_collected": 47,
   "languages": {
     "Python": 7949,
-    "Markdown": 467,
+    "Markdown": 503,
     "YAML": 59,
-    "TOML": 34
+    "TOML": 34,
+    "JSON": 23
   }
 }
