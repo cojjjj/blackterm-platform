@@ -1,21 +1,16 @@
-# BLACKTERM v7.2.2
+# Changelog
 
-## Added
+## v8.6.0 — Stability Foundation
 
-- Repository statistics generator
-- Terminal-style README telemetry block
-- Live SVG statistics card
-- Machine-readable JSON statistics snapshot
-- Automatic GitHub Action refresh after pushes
-- Tests for stable README marker handling and line counting
-
-## Metrics
-
-- Source and total lines
-- Python and test lines
-- Documentation lines
-- Files and modules
-- Desktop pages
-- Discovered tests
-- Git commits and contributors
-- Language line totals
+- Rebuilt animation ownership around QTimer.
+- Fixed missing Qt import.
+- Added valid PySide6 timer enum usage.
+- Preserved paint-safe graph animations.
+- Preserved correct QTextCursor usage.
+- Consolidated all ambient rendering into RenderSurface.
+- Removed stale AmbientBackdrop and ParticleField integration.
+- Removed obsolete render tests.
+- Added current architecture regression tests.
+- Preserved the premium interface, Operator Dashboard, Intelligence Engine,
+  Investigation Graph, Live Investigation, cases, evidence, timeline, AI,
+  correlation, and reports.

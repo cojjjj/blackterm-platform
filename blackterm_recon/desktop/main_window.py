@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QEasingCurve, QEvent, QPropertyAnimation
-from PySide6.QtWidgets import (
-    QHBoxLayout, QMainWindow, QMessageBox, QStackedWidget,
-    QVBoxLayout, QWidget,
-)
+from PySide6.QtCore import QEvent
+from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
 from .command_bar import CommandBar
 from .dock import Dock
@@ -14,6 +11,7 @@ from .pages.cases import CasesPage
 from .pages.dashboard import DashboardPage
 from .pages.history import HistoryPage
 from .pages.mission_control import MissionControlPage
+from .operator_dashboard_page import OperatorDashboardPage
 from .pages.network import NetworkPage
 from .pages.platform import PlatformPage
 from .pages.plugins import PluginsPage
@@ -22,9 +20,11 @@ from .pages.scan import ScanPage
 from .pages.settings import SettingsPage
 from .pages.terminal import TerminalPage
 from .theme import stylesheet
-from .widgets import ParticleField
 from .autonomous import AutonomousInvestigation
 from .event_bridge import QtEventBridge
+from .living_interface import BootOverlay, FadeController
+from .render_engine import RenderSurface
+from .premium_style import premium_stylesheet
 
 
 class MainWindow(QMainWindow):
@@ -34,7 +34,7 @@ class MainWindow(QMainWindow):
         self.operator = operator
         self.event_bus = event_bus
         self.event_store = event_store
-        self.setWindowTitle("BLACKTERM Platform v7.2.1 // Case Open Preference")
+        self.setWindowTitle("BLACKTERM Intelligence Platform v8.6 // Stability Foundation")
         self.resize(1540, 920)
         self.setMinimumSize(1160, 740)
         self.setMouseTracking(True)
@@ -42,16 +42,20 @@ class MainWindow(QMainWindow):
         root_widget = QWidget()
         root_widget.setObjectName("rootWindow")
         self.setCentralWidget(root_widget)
-        self.particles = ParticleField(root_widget, count=64)
-        self.particles.lower()
+        self.render_surface = RenderSurface(root_widget, particle_count=42)
+        self.render_surface.lower()
 
         layout = QHBoxLayout(root_widget)
         layout.setContentsMargins(13, 13, 13, 13)
         layout.setSpacing(13)
 
+        self.fade_controller = FadeController(self)
         self.stack = QStackedWidget()
         self.mission = MissionControlPage(
             engine, event_bus, event_store
+        )
+        self.operator_dashboard = OperatorDashboardPage(
+            engine, event_bus, operator=operator
         )
         self.dashboard = DashboardPage(engine, operator)
         self.scan = ScanPage(engine)
@@ -69,6 +73,7 @@ class MainWindow(QMainWindow):
 
         self.pages = [
             ("MISSION CONTROL", self.mission),
+            ("OPERATOR DASHBOARD", self.operator_dashboard),
             ("PLATFORM", self.platform),
             ("DASHBOARD", self.dashboard),
             ("LIVE SCAN", self.scan),
@@ -118,37 +123,25 @@ class MainWindow(QMainWindow):
         self.scan.scan_completed.connect(self.network.scan_finished)
         self.scan.scan_completed.connect(self.autonomous.scan_completed)
         self.scan.scan_completed.connect(lambda scan_id, result: self.cases.refresh())
-        self.autonomous.case_created.connect(self.handle_case_created)
+        self.autonomous.case_created.connect(self.cases.refresh)
+        self.autonomous.case_created.connect(self.cases.select_case)
+        self.autonomous.case_created.connect(self.open_case)
+        self.operator_dashboard.open_case_requested.connect(self.open_case)
+        self.operator_dashboard.live_investigation_requested.connect(
+            self.open_live_investigation
+        )
+        self.operator_dashboard.mission_control_requested.connect(
+            lambda: self.navigate_to_label("MISSION CONTROL")
+        )
         self.settings.theme_changed.connect(self.apply_theme)
         self.apply_theme(engine.config.theme)
         root_widget.installEventFilter(self)
 
 
-    def handle_case_created(self, case_id: int):
-        """Refresh the case list and honor the operator's post-scan preference."""
-        self.cases.refresh()
-        self.cases.select_case(case_id)
-
-        behavior = getattr(self.engine.config, "case_open_behavior", "ask")
-        if behavior == "always":
-            self.open_case(case_id)
-            return
-        if behavior == "never":
-            return
-
-        dialog = QMessageBox(self)
-        dialog.setWindowTitle("Investigation Ready")
-        dialog.setIcon(QMessageBox.Information)
-        dialog.setText(f"Case #{case_id} was created from the completed scan.")
-        dialog.setInformativeText("Open the investigation now or remain on the scan page?")
-        open_button = dialog.addButton("OPEN CASE", QMessageBox.AcceptRole)
-        dialog.addButton("STAY ON SCAN", QMessageBox.RejectRole)
-        dialog.setDefaultButton(open_button)
-        dialog.exec()
-
-        if dialog.clickedButton() is open_button:
-            self.open_case(case_id)
-
+    def open_live_investigation(self):
+        self.navigate_to_label("CASES")
+        if hasattr(self.cases, "open_intelligence_engine"):
+            self.cases.open_intelligence_engine()
 
     def open_case(self, case_id: int):
         self.navigate_to_label("CASES")
@@ -156,17 +149,24 @@ class MainWindow(QMainWindow):
         self.cases.select_case(case_id)
         self.cases.load_case()
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        rect = self.centralWidget().rect()
+        self.render_surface.setGeometry(rect)
+        if hasattr(self, "boot_overlay"):
+            self.boot_overlay.setGeometry(rect.adjusted(18, 18, -18, -18))
+        if getattr(self, "toast", None) and self.toast.isVisible():
+            self.toast.move(
+                rect.right() - self.toast.width() - 24,
+                rect.bottom() - self.toast.height() - 24,
+            )
+
     def closeEvent(self, event):
+        if getattr(self, "render_surface", None):
+            self.render_surface.shutdown()
         if getattr(self, "event_bridge", None):
             self.event_bridge.close()
         super().closeEvent(event)
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self.particles.setGeometry(self.centralWidget().rect())
-        if getattr(self, "toast", None) and self.toast.isVisible():
-            rect = self.centralWidget().rect()
-            self.toast.move(rect.right() - self.toast.width() - 24, rect.bottom() - self.toast.height() - 24)
 
     def eventFilter(self, watched, event):
         if event.type() == QEvent.MouseMove:
@@ -181,6 +181,8 @@ class MainWindow(QMainWindow):
             mapping = {
                 "mission": "MISSION CONTROL",
                 "control": "MISSION CONTROL",
+                "operator": "OPERATOR DASHBOARD",
+                "home": "OPERATOR DASHBOARD",
                 "platform": "PLATFORM",
                 "dashboard": "DASHBOARD",
                 "scan": "LIVE SCAN",
@@ -199,7 +201,9 @@ class MainWindow(QMainWindow):
             if label:
                 self.navigate_to_label(label)
                 return
-        if parts[0] == "history":
+        if parts[0] in {"operator", "home"}:
+            self.navigate_to_label("OPERATOR DASHBOARD")
+        elif parts[0] == "history":
             self.navigate_to_label("HISTORY")
         elif parts[0] == "scan":
             self.navigate_to_label("LIVE SCAN")
@@ -221,14 +225,7 @@ class MainWindow(QMainWindow):
         page = self.pages[index][1]
         if hasattr(page, "refresh"):
             page.refresh()
-
-        animation = QPropertyAnimation(page, b"windowOpacity", self)
-        animation.setDuration(220)
-        animation.setStartValue(0.68)
-        animation.setEndValue(1.0)
-        animation.setEasingCurve(QEasingCurve.OutCubic)
-        animation.start()
-        self._page_animation = animation
+        self.fade_controller.fade_in(page, 210)
 
     def apply_theme(self, name):
-        self.setStyleSheet(stylesheet(name))
+        self.setStyleSheet(stylesheet(name) + premium_stylesheet())

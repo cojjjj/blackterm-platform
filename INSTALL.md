@@ -1,48 +1,43 @@
-# BLACKTERM v7.2.2 — Project Stats
+# BLACKTERM Platform v8.6 — Stability Foundation
 
-## Add these files
+This clean release consolidates rendering, animations, startup behavior, and
+tests around the architecture that BLACKTERM currently uses.
 
-Copy these folders into the root of your BLACKTERM repository:
+## Before installing
+
+Close BLACKTERM and delete these stale tests if they still exist:
 
 ```text
-tools/
-.github/
-assets/
-tests/
+tests/test_v84_living_interface.py
+tests/test_v841_animation_stability.py
+tests/test_v85_premium_polish.py
+tests/test_v851_render_engine_stability.py
 ```
 
-The tool does not replace your existing README. It safely appends a statistics block or refreshes the existing block between its markers.
+## Install
 
-## Run locally
+Extract the ZIP and drag `blackterm_recon` and `tests` into:
+
+```text
+C:\Users\tyler\Desktop\BLACKTERM-RECON-DESKTOP-ALPHA
+```
+
+Choose **Replace the files in the destination**.
+
+## Test
 
 ```powershell
-python tools\update_stats.py --print
+pytest -q
 ```
 
-This creates or refreshes:
-
-```text
-README.md
-assets/project-stats.json
-assets/project-stats.svg
-```
-
-Then commit and push:
+## Run
 
 ```powershell
-git add README.md tools .github assets tests
-git commit -m "feat: add automatic BLACKTERM project telemetry"
-git push origin main
+python -m blackterm_recon gui
 ```
 
-## Automatic GitHub updates
-
-The included GitHub Action runs after pushes to `main`. It recounts the repository and commits updated telemetry only when the values changed.
-
-If GitHub blocks the workflow's push, open:
+Expected title:
 
 ```text
-Repository Settings → Actions → General → Workflow permissions
+BLACKTERM Intelligence Platform v8.6 // Stability Foundation
 ```
-
-Choose **Read and write permissions**, then save.
