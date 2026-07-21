@@ -6,6 +6,7 @@ from .plugins import PluginManager
 from .scanner import scan_host
 from .operations import new_operation_id
 from .attack_surface import build_attack_surface
+from .fingerprinting import fingerprint_scan
 
 
 class ReconEngine:
@@ -73,6 +74,9 @@ class ReconEngine:
         )
         result.plugin_results = self.plugins.execute_all(
             ScanContext(result=result, config=self.config)
+        )
+        result.fingerprints = fingerprint_scan(
+            result, timeout=max(1.0, self.config.banner_timeout)
         )
         result.attack_surface = build_attack_surface(result).to_dict()
         if self.event_bus:

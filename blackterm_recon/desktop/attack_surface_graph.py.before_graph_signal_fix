@@ -186,7 +186,6 @@ class SurfaceNode(QGraphicsObject):
 class AttackSurfaceGraph(QGraphicsView):
     nodeActivated = Signal(object)
 
-    graphRendered = Signal(int, int)
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._scene = QGraphicsScene(self)

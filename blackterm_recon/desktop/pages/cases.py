@@ -5,11 +5,12 @@ from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QDialog, QDialogButtonBox, QFormLayout,
     QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit, QListWidget,
-    QMessageBox, QPushButton, QSlider, QSplitter, QTabWidget, QTabBar, QTableWidget,
+    QMessageBox, QProgressBar, QPushButton, QSlider, QSplitter, QTabWidget, QTabBar, QTableWidget,
     QTableWidgetItem, QTextEdit, QTreeWidget, QTreeWidgetItem, QVBoxLayout,
     QWidget,
 )
 from ...case_reporting import write_case_report
+from ...case_completeness import assess_case_completeness
 from ...investigation_engine import assess_case
 from ...correlation_engine import correlate_case
 from ..investigation_graph import InvestigationGraph
@@ -112,9 +113,49 @@ class CasesPage(QWidget):
 
         self.tabs = QTabWidget()
         right_layout.addWidget(self.tabs, 1)
+        overview_tab = QWidget()
+        overview_layout = QVBoxLayout(overview_tab)
+
+        completeness_panel = QFrame()
+        completeness_panel.setObjectName("panel")
+        completeness_layout = QVBoxLayout(completeness_panel)
+        completeness_head = QHBoxLayout()
+        self.completeness_title = QLabel("CASE INTELLIGENCE SCORE // --")
+        self.completeness_title.setObjectName("sectionTitle")
+        self.completeness_level = QLabel("SELECT A CASE")
+        completeness_head.addWidget(self.completeness_title)
+        completeness_head.addStretch()
+        completeness_head.addWidget(self.completeness_level)
+        completeness_layout.addLayout(completeness_head)
+
+        self.completeness_bar = QProgressBar()
+        self.completeness_bar.setRange(0, 100)
+        self.completeness_bar.setValue(0)
+        self.completeness_bar.setFormat("%p% COMPLETE")
+        self.completeness_bar.setTextVisible(True)
+        self.completeness_bar.setMinimumHeight(22)
+        completeness_layout.addWidget(self.completeness_bar)
+
+        completeness_columns = QHBoxLayout()
+        collected_column = QVBoxLayout()
+        collected_column.addWidget(QLabel("INTELLIGENCE COLLECTED"))
+        self.completeness_collected = QListWidget()
+        self.completeness_collected.setMaximumHeight(150)
+        collected_column.addWidget(self.completeness_collected)
+        missing_column = QVBoxLayout()
+        missing_column.addWidget(QLabel("RECOMMENDED NEXT COLLECTION"))
+        self.completeness_missing = QListWidget()
+        self.completeness_missing.setMaximumHeight(150)
+        missing_column.addWidget(self.completeness_missing)
+        completeness_columns.addLayout(collected_column, 1)
+        completeness_columns.addLayout(missing_column, 1)
+        completeness_layout.addLayout(completeness_columns)
+        overview_layout.addWidget(completeness_panel)
+
         self.overview = QTextEdit()
         self.overview.setReadOnly(True)
-        self.tabs.addTab(self.overview, "OVERVIEW")
+        overview_layout.addWidget(self.overview, 1)
+        self.tabs.addTab(overview_tab, "OVERVIEW")
 
         notes = QWidget()
         notes_layout = QVBoxLayout(notes)
@@ -331,7 +372,41 @@ class CasesPage(QWidget):
             self.timeline.addItem(f"{item['created_at'][11:19]}  {item['event_type']:<9}  {item['title']}")
         self.replay.setMaximum(max(0, len(self.timeline_events) - 1))
         self.replay.setValue(self.replay.maximum())
+        self.update_case_completeness(case, scans, notes, evidence, self.timeline_events)
         self.clear_correlation()
+
+    def update_case_completeness(self, case, scans, notes, evidence, timeline):
+        report = assess_case_completeness(case, scans, notes, evidence, timeline)
+        self.completeness_title.setText(f"CASE INTELLIGENCE SCORE // {report.score}/100")
+        self.completeness_level.setText(report.level)
+        self.completeness_bar.setValue(report.score)
+
+        if report.score >= 85:
+            accent = "#36e6b0"
+        elif report.score >= 65:
+            accent = "#31b7ff"
+        elif report.score >= 40:
+            accent = "#f5c451"
+        else:
+            accent = "#ff8a4c"
+        self.completeness_bar.setStyleSheet(
+            "QProgressBar{border:1px solid #31587a;border-radius:8px;background:#06111f;"
+            "text-align:center;color:#e8f5ff;font-weight:700;}"
+            f"QProgressBar::chunk{{border-radius:7px;background:{accent};}}"
+        )
+        self.completeness_level.setStyleSheet(f"color:{accent};font-weight:700;")
+
+        self.completeness_collected.clear()
+        for check in report.collected:
+            self.completeness_collected.addItem(f"✓  {check.label}  (+{check.weight})")
+        if not report.collected:
+            self.completeness_collected.addItem("No intelligence collected yet.")
+
+        self.completeness_missing.clear()
+        for check in report.missing:
+            self.completeness_missing.addItem(f"•  {check.label} — {check.detail}")
+        if not report.missing:
+            self.completeness_missing.addItem("✓ Case collection objectives complete.")
 
     def clear_correlation(self):
         self.correlation_report = None

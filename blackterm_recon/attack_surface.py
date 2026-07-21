@@ -53,6 +53,7 @@ class AttackSurface:
     open_ports: list[int] = field(default_factory=list)
     services: list[str] = field(default_factory=list)
     technologies: list[str] = field(default_factory=list)
+    technology_details: list[dict[str, Any]] = field(default_factory=list)
     findings: list[SurfaceFinding] = field(default_factory=list)
     exposure_categories: dict[str, int] = field(default_factory=dict)
     risk_score: int = 0
@@ -228,7 +229,12 @@ def build_attack_surface(result: ScanResult) -> AttackSurface:
         profile=result.profile,
         open_ports=[port.port for port in open_ports],
         services=services,
-        technologies=_detect_technologies(open_ports, result.plugin_results),
+        technologies=(
+            [item.name for item in result.fingerprints]
+            if result.fingerprints
+            else _detect_technologies(open_ports, result.plugin_results)
+        ),
+        technology_details=[item.to_dict() for item in result.fingerprints],
         findings=findings,
         exposure_categories=categories,
         risk_score=risk_score,

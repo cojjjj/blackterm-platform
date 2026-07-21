@@ -18,6 +18,19 @@ class PortResult:
 
 
 @dataclass(slots=True)
+class TechnologyFingerprint:
+    name: str
+    category: str
+    confidence: int
+    evidence: list[str] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
+    ports: list[int] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(slots=True)
 class ScanResult:
     target: str
     ip: str
@@ -30,6 +43,7 @@ class ScanResult:
     operation_id: str | None = None
     profile: str = "custom"
     attack_surface: dict[str, Any] = field(default_factory=dict)
+    fingerprints: list[TechnologyFingerprint] = field(default_factory=list)
 
     @property
     def open_ports(self) -> list[PortResult]:
