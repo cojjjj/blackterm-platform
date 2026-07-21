@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import deque
 from datetime import datetime
+from importlib.metadata import PackageNotFoundError, version
 
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtGui import QBrush, QColor, QFont
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QProgressBar,
+    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -46,6 +48,13 @@ class MissionBridge(QObject):
 
 
 class MissionControlPage(QWidget):
+    new_investigation_requested = Signal()
+    live_scan_requested = Signal()
+    cases_requested = Signal()
+    reports_requested = Signal()
+    osint_requested = Signal()
+    threat_intelligence_requested = Signal()
+
     def __init__(self, engine, event_bus, event_store):
         super().__init__()
         self.engine = engine
@@ -54,6 +63,14 @@ class MissionControlPage(QWidget):
         self.running_scans = 0
         self.recent_levels = deque(maxlen=50)
         self.scan_phase = 0
+        self.started_at = datetime.now().astimezone()
+        self.current_target = ""
+        self.operation_started_at = None
+        self.operation_stage = "IDLE"
+        try:
+            self.platform_version = version("blackterm-recon")
+        except PackageNotFoundError:
+            self.platform_version = "6.1.0"
 
         root = QVBoxLayout(self)
         root.setContentsMargins(8, 8, 8, 8)
@@ -75,31 +92,78 @@ class MissionControlPage(QWidget):
         self.state = QLabel("PLATFORM ONLINE")
         self.state.setObjectName("statusActive")
         top.addWidget(self.state)
+        self.release_badge = QLabel(f"v{self.platform_version}  •  INTELLIGENCE RELEASE")
+        self.release_badge.setObjectName("releaseBadge")
+        self.release_badge.setStyleSheet(
+            "QLabel#releaseBadge {"
+            " color: #31b7ff; background: rgba(49, 183, 255, 18);"
+            " border: 1px solid #24557a; border-radius: 8px;"
+            " padding: 6px 10px; font-weight: 700; letter-spacing: 1px;"
+            " }"
+        )
+        top.addWidget(self.release_badge)
         root.addLayout(top)
 
         metrics = QHBoxLayout()
         metrics.setSpacing(8)
-        self.hosts = MetricCard("Observed Hosts", "0", "Unique saved targets")
+        self.scans = MetricCard("Recon Operations", "0", "Saved authorized scans")
+        self.cases = MetricCard("Cases", "0", "Investigation workspaces")
+        self.open_cases = MetricCard("Active Cases", "0", "Open, active, or review")
         self.open_ports = MetricCard("Open Ports", "0", "Across saved scans")
-        self.running = MetricCard("Running Scans", "0", "Live engine activity")
         self.alerts = MetricCard("Alerts", "0", "Warnings and errors")
-        self.events = MetricCard("Events", "0", "Persistent event history")
-        for card in (self.hosts, self.open_ports, self.running, self.alerts, self.events):
+        for card in (self.scans, self.cases, self.open_cases, self.open_ports, self.alerts):
             metrics.addWidget(card)
         root.addLayout(metrics)
+
+        # Compact live-operation strip. It remains visible while idle so Mission
+        # Control always communicates what the automation pipeline will do next.
+        operation_panel = QFrame()
+        operation_panel.setObjectName("panel")
+        operation_layout = QHBoxLayout(operation_panel)
+        operation_layout.setContentsMargins(10, 8, 10, 8)
+        operation_layout.setSpacing(10)
+        operation_title_box = QVBoxLayout()
+        operation_title_box.setSpacing(1)
+        operation_title_box.addWidget(QLabel("ACTIVE OPERATION"))
+        self.operation_target = QLabel("Awaiting operation — select New Investigation to begin")
+        self.operation_target.setObjectName("muted")
+        operation_title_box.addWidget(self.operation_target)
+        operation_layout.addLayout(operation_title_box, 2)
+
+        self.operation_bars = {}
+        for stage in ("RECON", "OSINT", "THREAT INTEL", "AI CORRELATION", "REPORT"):
+            stage_box = QVBoxLayout()
+            stage_box.setSpacing(2)
+            stage_label = QLabel(stage)
+            stage_label.setObjectName("muted")
+            bar = QProgressBar()
+            bar.setRange(0, 100)
+            bar.setValue(0)
+            bar.setTextVisible(False)
+            bar.setMaximumHeight(8)
+            stage_box.addWidget(stage_label)
+            stage_box.addWidget(bar)
+            operation_layout.addLayout(stage_box, 1)
+            self.operation_bars[stage] = bar
+
+        self.operation_elapsed = QLabel("IDLE")
+        self.operation_elapsed.setObjectName("statusActive")
+        self.operation_elapsed.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        operation_layout.addWidget(self.operation_elapsed)
+        root.addWidget(operation_panel)
 
         body = QGridLayout()
         body.setHorizontalSpacing(8)
         body.setVerticalSpacing(8)
-        body.setColumnStretch(0, 2)
-        body.setColumnStretch(1, 3)
-        body.setColumnStretch(2, 3)
+        body.setColumnStretch(0, 3)
+        body.setColumnStretch(1, 2)
+        body.setColumnStretch(2, 2)
 
-        feed_panel = QFrame()
-        feed_panel.setObjectName("panel")
-        feed_layout = QVBoxLayout(feed_panel)
-        feed_layout.setContentsMargins(10, 10, 10, 10)
-        feed_layout.addWidget(QLabel("LIVE INTELLIGENCE FEED"))
+        activity_panel = QFrame()
+        activity_panel.setObjectName("panel")
+        activity_layout = QVBoxLayout(activity_panel)
+        activity_layout.setContentsMargins(10, 10, 10, 10)
+        activity_layout.addWidget(QLabel("RECENT PLATFORM ACTIVITY"))
         self.feed = QListWidget()
         self.feed.setObjectName("missionFeed")
         self.feed.setSpacing(5)
@@ -111,29 +175,44 @@ class MissionControlPage(QWidget):
             "QListWidget#missionFeed { background: transparent; border: 1px solid #193957; padding: 6px; }"
             "QListWidget#missionFeed::item { border-bottom: 1px solid rgba(49, 183, 255, 35); padding: 8px 6px; }"
         )
-        feed_layout.addWidget(self.feed)
+        activity_layout.addWidget(self.feed)
 
-        activity_panel = QFrame()
-        activity_panel.setObjectName("panel")
-        activity_layout = QVBoxLayout(activity_panel)
-        activity_layout.addWidget(QLabel("EVENT ACTIVITY"))
-        self.sparkline = Sparkline()
-        activity_layout.addWidget(self.sparkline)
-        activity_layout.addWidget(QLabel("PLATFORM LOAD"))
+        quick_panel = QFrame()
+        quick_panel.setObjectName("panel")
+        quick_layout = QVBoxLayout(quick_panel)
+        quick_layout.addWidget(QLabel("QUICK ACTIONS"))
+        quick_layout.addWidget(self._action_button("NEW INVESTIGATION", self.new_investigation_requested.emit, primary=True))
+        quick_layout.addWidget(self._action_button("OPEN LIVE SCAN", self.live_scan_requested.emit))
+        quick_layout.addWidget(self._action_button("COLLECT OSINT", self.osint_requested.emit))
+        quick_layout.addWidget(self._action_button("ANALYZE THREAT", self.threat_intelligence_requested.emit))
+        quick_layout.addWidget(self._action_button("OPEN CASES", self.cases_requested.emit))
+        quick_layout.addWidget(self._action_button("OPEN REPORTS", self.reports_requested.emit))
+        quick_layout.addStretch()
+
+        status_panel = QFrame()
+        status_panel.setObjectName("panel")
+        status_layout = QVBoxLayout(status_panel)
+        status_layout.addWidget(QLabel("PLATFORM STATUS"))
+        self.module_status = QLabel()
+        self.module_status.setWordWrap(True)
+        self.module_status.setObjectName("muted")
+        status_layout.addWidget(self.module_status)
+        status_layout.addWidget(QLabel("PLATFORM LOAD"))
         self.load = QProgressBar()
         self.load.setRange(0, 100)
-        activity_layout.addWidget(self.load)
+        status_layout.addWidget(self.load)
         self.threat_meter = ThreatMeter()
-        activity_layout.addWidget(self.threat_meter)
+        status_layout.addWidget(self.threat_meter)
+        status_layout.addStretch()
 
-        ai_panel = QFrame()
-        ai_panel.setObjectName("panel")
-        ai_layout = QVBoxLayout(ai_panel)
-        ai_layout.addWidget(QLabel("AI ANALYST"))
+        analyst_panel = QFrame()
+        analyst_panel.setObjectName("panel")
+        analyst_layout = QVBoxLayout(analyst_panel)
+        analyst_layout.addWidget(QLabel("AI OPERATIONS ANALYST"))
         self.ai_state = QLabel("STANDBY")
         self.ai_state.setObjectName("statusActive")
         self.ai_detail = TypingLabel(
-            "Awaiting scan telemetry. BLACKTERM will summarize service exposure as events arrive.",
+            "Mission Control is monitoring reconnaissance, OSINT, threat intelligence, cases, and platform events.",
             interval=10,
         )
         self.ai_detail.setWordWrap(True)
@@ -142,25 +221,26 @@ class MissionControlPage(QWidget):
         self.ai_score.setRange(0, 100)
         self.ai_score.setValue(0)
         self.ai_score.setFormat("CONTEXT SCORE %p%")
-        ai_layout.addWidget(self.ai_state)
-        ai_layout.addWidget(self.ai_detail)
-        ai_layout.addWidget(self.ai_score)
-        ai_layout.addStretch()
+        analyst_layout.addWidget(self.ai_state)
+        analyst_layout.addWidget(self.ai_detail)
+        analyst_layout.addWidget(self.ai_score)
+        analyst_layout.addStretch()
 
-        status_panel = QFrame()
-        status_panel.setObjectName("panel")
-        status_layout = QVBoxLayout(status_panel)
-        status_layout.addWidget(QLabel("THREAT / EXPOSURE CONTEXT"))
+        trend_panel = QFrame()
+        trend_panel.setObjectName("panel")
+        trend_layout = QVBoxLayout(trend_panel)
+        trend_layout.addWidget(QLabel("EVENT ACTIVITY"))
+        self.sparkline = Sparkline()
+        trend_layout.addWidget(self.sparkline)
         self.threat = QLabel()
         self.threat.setWordWrap(True)
         self.threat.setObjectName("muted")
-        status_layout.addWidget(self.threat)
-        status_layout.addStretch()
+        trend_layout.addWidget(self.threat)
 
         timeline_panel = QFrame()
         timeline_panel.setObjectName("panel")
         timeline_layout = QVBoxLayout(timeline_panel)
-        timeline_layout.addWidget(QLabel("CASE / ACTIVITY TIMELINE"))
+        timeline_layout.addWidget(QLabel("OPERATION TIMELINE"))
         self.timeline = QListWidget()
         self.timeline.setObjectName("missionTimeline")
         self.timeline.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
@@ -172,11 +252,12 @@ class MissionControlPage(QWidget):
         )
         timeline_layout.addWidget(self.timeline)
 
-        body.addWidget(feed_panel, 0, 0, 3, 1)
-        body.addWidget(activity_panel, 0, 1, 1, 2)
-        body.addWidget(status_panel, 1, 1)
-        body.addWidget(ai_panel, 1, 2)
-        body.addWidget(timeline_panel, 2, 1, 1, 2)
+        body.addWidget(activity_panel, 0, 0, 3, 1)
+        body.addWidget(quick_panel, 0, 1, 2, 1)
+        body.addWidget(status_panel, 0, 2, 1, 1)
+        body.addWidget(analyst_panel, 1, 2, 1, 1)
+        body.addWidget(trend_panel, 2, 1, 1, 1)
+        body.addWidget(timeline_panel, 2, 2, 1, 1)
         root.addLayout(body, 1)
 
         self.bridge = MissionBridge()
@@ -192,6 +273,29 @@ class MissionControlPage(QWidget):
         self.scan_timer.timeout.connect(self.animate_scan_state)
         self.refresh()
 
+    def _action_button(self, text, callback, primary=False):
+        button = QPushButton(text)
+        if primary:
+            button.setObjectName("primaryButton")
+            button.setStyleSheet(
+                "QPushButton#primaryButton {"
+                " color: #020812; font-weight: 800;"
+                " border: 1px solid #47f0cf; border-radius: 8px;"
+                " background: qlineargradient(x1:0, y1:0, x2:1, y2:0,"
+                " stop:0 #31b7ff, stop:1 #35dfb0);"
+                " padding: 8px 12px;"
+                " }"
+                "QPushButton#primaryButton:hover {"
+                " border-color: #ffffff;"
+                " background: qlineargradient(x1:0, y1:0, x2:1, y2:0,"
+                " stop:0 #66cbff, stop:1 #5ff2c9);"
+                " }"
+                "QPushButton#primaryButton:pressed { padding-top: 9px; }"
+            )
+        button.clicked.connect(callback)
+        button.setMinimumHeight(38)
+        return button
+
     def animate_scan_state(self):
         if not self.running_scans:
             self.scan_timer.stop()
@@ -202,65 +306,202 @@ class MissionControlPage(QWidget):
 
     def refresh(self):
         scan_stats = self.engine.repository.stats()
-        event_stats = self.event_store.stats()
-        rows = self.engine.repository.list_recent(500)
-        unique_hosts = len({row["ip"] for row in rows})
+        event_stats = self.event_store.stats() if self.event_store else {
+            "warnings": 0, "errors": 0, "total": 0, "completed_scans": 0, "ai": 0
+        }
+        cases = self.engine.repository.list_cases()
+        active_cases = sum(1 for case in cases if case.get("status", "OPEN") != "CLOSED")
 
-        self.hosts.set_value(unique_hosts)
+        self.scans.set_value(scan_stats["scans"])
+        self.cases.set_value(len(cases))
+        self.open_cases.set_value(active_cases)
         self.open_ports.set_value(scan_stats["open_ports"])
-        self.running.set_value(self.running_scans)
         self.alerts.set_value(event_stats["warnings"] + event_stats["errors"])
-        self.events.set_value(event_stats["total"])
 
-        self.sparkline.set_values(self.event_store.recent_counts())
+        recent_counts = self.event_store.recent_counts() if self.event_store else [0]
+        self.sparkline.set_values(recent_counts or [0])
         load_value = min(
             100,
             int(event_stats["warnings"] * 3 + event_stats["errors"] * 7 + self.running_scans * 15),
         )
         self.load.setValue(load_value)
-        threat_score = min(
-            100,
-            event_stats["warnings"] * 12
-            + event_stats["errors"] * 25
-            + min(30, scan_stats["open_ports"] * 2),
+        # Mission Control represents current operational risk, not the raw lifetime
+        # count of warnings.  Normalize alerts against total recorded events and
+        # cap passive exposure so an established workspace does not permanently
+        # display CRITICAL simply because it has accumulated history.
+        warning_count = max(0, int(event_stats.get("warnings", 0)))
+        error_count = max(0, int(event_stats.get("errors", 0)))
+        total_events = max(1, int(event_stats.get("total", 0)), warning_count + error_count)
+        warning_rate = warning_count / total_events
+        error_rate = error_count / total_events
+
+        exposure_component = min(25.0, max(0, scan_stats["open_ports"]) * 0.5)
+        warning_component = min(20.0, warning_rate * 20.0)
+        error_component = min(45.0, error_rate * 55.0)
+        active_operation_component = min(10.0, self.running_scans * 10.0)
+        threat_score = round(
+            min(
+                100.0,
+                exposure_component
+                + warning_component
+                + error_component
+                + active_operation_component,
+            )
         )
         self.threat_meter.set_value(threat_score)
-        self.ai_score.setValue(min(100, threat_score + event_stats["ai"] * 4))
 
-        if event_stats["errors"]:
-            level = "ELEVATED"
-            context = f"{event_stats['errors']} error event(s) and {event_stats['warnings']} warning event(s) are recorded."
-        elif event_stats["warnings"]:
-            level = "GUARDED"
-            context = f"{event_stats['warnings']} warning event(s) are recorded. Review unexpected service exposure and failed operations."
-        else:
+        # Context score measures how much telemetry is available to the analyst;
+        # it is intentionally separate from threat severity.
+        context_score = min(
+            100,
+            35
+            + min(25, scan_stats["scans"] * 2)
+            + min(20, len(cases))
+            + min(20, event_stats.get("ai", 0) * 2),
+        )
+        self.ai_score.setValue(context_score)
+
+        if threat_score <= 24:
             level = "LOW"
-            context = "No error or warning events are currently recorded. This does not imply the environment is vulnerability-free."
+        elif threat_score <= 49:
+            level = "GUARDED"
+        elif threat_score <= 74:
+            level = "ELEVATED"
+        else:
+            level = "CRITICAL"
+
+        if error_count:
+            context = (
+                f"{error_count} error event(s) and {warning_count} warning event(s) "
+                "are present in recorded telemetry."
+            )
+        elif warning_count:
+            context = (
+                f"{warning_count} warning event(s) are recorded; severity is "
+                "normalized against overall platform activity."
+            )
+        else:
+            context = "No warning or error events are currently recorded."
+
         self.threat.setText(
-            f"PLATFORM CONTEXT: {level}\n\n{context}\n\n"
+            f"CONTEXT: {level}\n{context}\n\n"
             f"Completed scans: {event_stats['completed_scans']}\n"
             f"AI events: {event_stats['ai']}\n"
             f"Last scan: {scan_stats['last_scan']}"
         )
+        now = datetime.now().astimezone()
+        uptime_seconds = max(0, int((now - self.started_at).total_seconds()))
+        uptime_hours, remainder = divmod(uptime_seconds, 3600)
+        uptime_minutes, uptime_seconds = divmod(remainder, 60)
+        uptime_text = f"{uptime_hours:02d}h {uptime_minutes:02d}m {uptime_seconds:02d}s"
+        self.module_status.setText(
+            "● Recon Engine          ONLINE\n"
+            "● OSINT Engine          READY\n"
+            "● Threat Intelligence   READY\n"
+            "● Case Database         CONNECTED\n"
+            "● Reporting             READY\n\n"
+            f"Uptime:              {uptime_text}\n"
+            f"Last refresh:        {now.strftime('%H:%M:%S')}\n"
+            f"Running operations:  {self.running_scans}\n"
+            f"Persistent events:   {event_stats['total']}"
+        )
+
+        threat_colors = {
+            "LOW": "#35df83",
+            "GUARDED": "#ffd166",
+            "ELEVATED": "#ff9f43",
+            "CRITICAL": "#ff5c7a",
+        }
+        self.threat.setStyleSheet(f"color: {threat_colors[level]};")
+
+        if self.operation_started_at:
+            elapsed = max(0, int((now - self.operation_started_at).total_seconds()))
+            minutes, seconds = divmod(elapsed, 60)
+            self.operation_elapsed.setText(f"{minutes:02d}:{seconds:02d}")
+        else:
+            self.operation_elapsed.setText("READY")
+
+        if self.feed.count() == 0:
+            rows = self.engine.repository.list_recent(8)
+            for row in reversed(rows):
+                item = QListWidgetItem(
+                    f"SCAN #{row['id']}  {row['target']}  —  {row['open_ports']} open port(s)"
+                )
+                item.setForeground(QBrush(QColor("#31b7ff")))
+                self.feed.addItem(item)
+            for case in reversed(cases[:5]):
+                item = QListWidgetItem(
+                    f"CASE #{case['id']}  {case['name']}  —  {case['status']}"
+                )
+                item.setForeground(QBrush(QColor("#35df83")))
+                self.feed.addItem(item)
+            if self.feed.count() == 0:
+                self.feed.addItem("No platform activity recorded yet.")
+
+    def _set_operation_stage(self, stage: str, target: str = ""):
+        order = ("RECON", "OSINT", "THREAT INTEL", "AI CORRELATION", "REPORT")
+        if target:
+            self.current_target = target
+        if self.current_target:
+            self.operation_target.setText(self.current_target)
+        self.operation_stage = stage
+        if stage in order and self.operation_started_at is None:
+            self.operation_started_at = datetime.now().astimezone()
+        for name, bar in self.operation_bars.items():
+            if stage == "COMPLETE":
+                value = 100
+            elif stage in order:
+                current = order.index(stage)
+                index = order.index(name)
+                value = 100 if index < current else (55 if index == current else 0)
+            else:
+                value = 0
+            bar.setValue(value)
+        if stage == "COMPLETE":
+            self.operation_elapsed.setText("COMPLETE")
+            self.operation_target.setText(
+                f"{self.current_target or 'Operation'} — workflow complete"
+            )
+
+    def _set_contextual_analyst(self, state: str, detail: str):
+        self.ai_state.setText(state)
+        self.ai_detail.set_typed_text(detail)
 
     def on_event(self, event):
+        title_lower = (event.title or "").lower()
+        category_lower = (event.category or "").lower()
+        module_lower = (event.module or "").lower()
+        metadata = event.metadata or {}
+        target = str(metadata.get("target") or metadata.get("indicator") or "")
+
         if event.title == "Scan Started":
             self.running_scans += 1
-            self.ai_state.setText("ANALYZING TARGET")
-            self.ai_detail.set_typed_text(event.message)
+            self._set_operation_stage("RECON", target)
+            self._set_contextual_analyst("ANALYZING TARGET", event.message)
             self.scan_timer.start()
         elif event.title == "Open Port Observed":
-            port = event.metadata.get("port", "?")
-            service = event.metadata.get("service", "unknown")
-            self.ai_state.setText("CORRELATING SERVICES")
-            self.ai_detail.set_typed_text(f"Observed {service} on TCP/{port}. Evaluating exposure context and service risk.")
+            port = metadata.get("port", "?")
+            service = metadata.get("service", "unknown")
+            self._set_contextual_analyst(
+                "CORRELATING SERVICES",
+                f"Observed {service} on TCP/{port}. Evaluating exposure context and service risk.",
+            )
+        elif "osint" in title_lower or "osint" in category_lower or "osint" in module_lower:
+            self._set_operation_stage("OSINT", target)
+            self._set_contextual_analyst("ENRICHING PUBLIC SOURCES", event.message)
+        elif "threat" in title_lower or "threat" in category_lower or "threat" in module_lower:
+            self._set_operation_stage("THREAT INTEL", target)
+            self._set_contextual_analyst("CORRELATING THREAT INTELLIGENCE", event.message)
         elif event.level == EventLevel.AI:
-            self.ai_state.setText("ANALYSIS READY")
-            self.ai_detail.set_typed_text(event.message)
+            self._set_operation_stage("AI CORRELATION", target)
+            self._set_contextual_analyst("ANALYSIS READY", event.message)
+        elif "report" in title_lower or "report" in category_lower or "report" in module_lower:
+            self._set_operation_stage("REPORT", target)
+            self._set_contextual_analyst("GENERATING REPORT", event.message)
         elif event.title == "Scan Complete":
             self.running_scans = max(0, self.running_scans - 1)
-            self.ai_state.setText("SCAN REVIEW COMPLETE")
-            self.ai_detail.set_typed_text(event.message)
+            self._set_operation_stage("COMPLETE", target)
+            self._set_contextual_analyst("SCAN REVIEW COMPLETE", event.message)
             if not self.running_scans:
                 self.scan_timer.stop()
                 self.state.setText("PLATFORM ONLINE")

@@ -155,10 +155,23 @@ class MainWindow(QMainWindow):
         self.operator_dashboard.mission_control_requested.connect(
             lambda: self.navigate_to_label("MISSION CONTROL")
         )
+        self.mission.new_investigation_requested.connect(self.start_new_investigation)
+        self.mission.live_scan_requested.connect(lambda: self.navigate_to_label("LIVE SCAN"))
+        self.mission.cases_requested.connect(lambda: self.navigate_to_label("CASES"))
+        self.mission.reports_requested.connect(lambda: self.navigate_to_label("REPORTS"))
+        self.mission.osint_requested.connect(lambda: self.navigate_to_label("OSINT"))
+        self.mission.threat_intelligence_requested.connect(
+            lambda: self.navigate_to_label("THREAT INTELLIGENCE")
+        )
         self.settings.theme_changed.connect(self.apply_theme)
         self.apply_theme(engine.config.theme)
         root_widget.installEventFilter(self)
 
+
+    def start_new_investigation(self):
+        self.navigate_to_label("CASES")
+        if hasattr(self.cases, "create_case"):
+            self.cases.create_case()
 
     def open_investigation_workspace(self, scan_id=None):
         self.navigate_to_label("INVESTIGATION WORKSPACE")
