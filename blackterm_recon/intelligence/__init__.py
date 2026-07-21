@@ -4,7 +4,9 @@ from .engine import (
     IntelligenceRunResult,
     IntelligenceFinding,
     IntelligenceEvidence,
+    default_registry,
 )
+from .registry import IntelligenceModuleSpec, IntelligenceRegistry
 
 __all__ = [
     "IntelligenceEngine",
@@ -12,4 +14,7 @@ __all__ = [
     "IntelligenceRunResult",
     "IntelligenceFinding",
     "IntelligenceEvidence",
+    "IntelligenceModuleSpec",
+    "IntelligenceRegistry",
+    "default_registry",
 ]

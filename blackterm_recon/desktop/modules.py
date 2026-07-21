@@ -24,8 +24,8 @@ MODULES = [
     ),
     SecurityModule(
         "osint", "OSINT",
-        "Public-source collection workspace with source tracking and evidence notes.",
-        "SDK READY", None, "INTELLIGENCE",
+        "Public-source enrichment with DNS, WHOIS, ASN, GeoIP, TLS, headers, technology, and case evidence.",
+        "ACTIVE BETA", "OSINT", "INTELLIGENCE",
     ),
     SecurityModule(
         "forensics", "FORENSICS",
@@ -45,6 +45,6 @@ MODULES = [
     SecurityModule(
         "threat", "THREAT INTELLIGENCE",
         "Indicator enrichment, relationships, confidence, and source-aware summaries.",
-        "SDK READY", None, "INTELLIGENCE",
+        "ACTIVE BETA", "THREAT INTELLIGENCE", "INTELLIGENCE",
     ),
 ]

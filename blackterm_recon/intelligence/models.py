@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
@@ -50,6 +50,9 @@ class IntelligenceModuleResult:
     duration_ms: int = 0
     error: str = ""
 
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
     @property
     def successful(self) -> bool:
         return self.status == "success"
@@ -66,6 +69,11 @@ class IntelligenceRunResult:
     confidence: int
     level: str
     summary: str
+    operation_id: str | None = None
+    context: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
     @property
     def evidence_count(self) -> int:
