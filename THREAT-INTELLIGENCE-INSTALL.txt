@@ -1,0 +1,20 @@
+BLACKTERM Threat Intelligence Center
+
+Replace the matching paths in your current BLACKTERM project.
+
+Features:
+- Local deterministic indicator analysis
+- Public URLhaus host reputation lookup
+- Optional VirusTotal provider (API key in Settings)
+- Optional AbuseIPDB provider for IP indicators (API key in Settings)
+- Correlated threat score, confidence, verdict, IOC matches
+- Provider pipeline and raw source evidence
+- Save-to-case integration
+
+Run:
+  .\.venv\Scripts\Activate.ps1
+  python -m pip install -e .
+  pytest -q tests/test_threat_intelligence.py
+  python -m blackterm_recon gui
+
+API keys are optional. Without them, those providers show SKIPPED while local analysis and URLhaus continue.

@@ -26,6 +26,9 @@ class AppConfig:
     allow_public_targets: bool = False
     theme: str = "Purple Void"
     case_open_behavior: str = "ask"
+    threat_timeout: float = 8.0
+    virustotal_api_key: str = ""
+    abuseipdb_api_key: str = ""
 
     def validate(self) -> None:
         if not 0.05 <= self.timeout <= 30:
@@ -34,6 +37,8 @@ class AppConfig:
             raise ValueError("workers must be between 1 and 1000")
         if not 0.05 <= self.banner_timeout <= 30:
             raise ValueError("banner_timeout must be between 0.05 and 30 seconds")
+        if not 2 <= self.threat_timeout <= 60:
+            raise ValueError("threat_timeout must be between 2 and 60 seconds")
         self.log_level = self.log_level.upper()
         self.case_open_behavior = self.case_open_behavior.lower()
         if self.case_open_behavior not in {"ask", "always", "never"}:
@@ -48,6 +53,8 @@ _ENV_MAP = {
     "BLACKTERM_WORKERS": ("workers", int),
     "BLACKTERM_BANNERS": ("banners", lambda v: v.lower() in {"1", "true", "yes", "on"}),
     "BLACKTERM_LOG_LEVEL": ("log_level", str),
+    "BLACKTERM_VIRUSTOTAL_API_KEY": ("virustotal_api_key", str),
+    "BLACKTERM_ABUSEIPDB_API_KEY": ("abuseipdb_api_key", str),
 }
 
 

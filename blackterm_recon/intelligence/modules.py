@@ -336,6 +336,206 @@ def http_module(target: str, scheme: str = "https", path: str = "/", timeout: fl
     )
 
 
+
+
+def _resolve_primary_ip(target: str) -> str:
+    try:
+        return str(ip_address(target))
+    except ValueError:
+        records = socket.getaddrinfo(target, None, proto=socket.IPPROTO_TCP)
+        addresses = sorted({item[4][0] for item in records})
+        if not addresses:
+            raise OSError("No address was returned for the target.")
+        return addresses[0]
+
+
+def asn_module(target: str, timeout: float = 7.0, **_) -> IntelligenceModuleResult:
+    """Collect bounded ASN and network ownership data from Team Cymru WHOIS."""
+    started = time.perf_counter()
+    try:
+        address = _resolve_primary_ip(target)
+        query = f" -v {address}\n".encode("ascii", errors="ignore")
+        with socket.create_connection(("whois.cymru.com", 43), timeout=timeout) as sock:
+            sock.sendall(query)
+            response = b""
+            while len(response) < 32_000:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                response += chunk
+        text = response.decode("utf-8", errors="replace").strip()
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        data = {}
+        if len(lines) >= 2 and "|" in lines[0] and "|" in lines[-1]:
+            headers = [part.strip().lower().replace(" ", "_") for part in lines[0].split("|")]
+            values = [part.strip() for part in lines[-1].split("|")]
+            data = dict(zip(headers, values))
+        asn = data.get("as", "")
+        owner = data.get("as_name", "") or data.get("owner", "")
+        prefix = data.get("bgp_prefix", "") or data.get("prefix", "")
+        country = data.get("cc", "")
+        findings = [
+            IntelligenceFinding("IP address", address, confidence=98, node_kind="IP"),
+        ]
+        if asn:
+            findings.append(IntelligenceFinding("Autonomous system", f"AS{asn}", confidence=92, node_kind="ASN"))
+        if owner:
+            findings.append(IntelligenceFinding("Network organization", owner, confidence=88, node_kind="ORGANIZATION"))
+        if prefix:
+            findings.append(IntelligenceFinding("Network prefix", prefix, confidence=90, node_kind="NETWORK"))
+        payload = {"target": target, "ip": address, **data}
+        relationships = [IntelligenceRelationship(f"target:{target}", f"ip:{address}", "resolves to", 95)]
+        if asn:
+            relationships.append(IntelligenceRelationship(f"ip:{address}", f"asn:{asn}", "announced by", 92))
+        if owner and asn:
+            relationships.append(IntelligenceRelationship(f"asn:{asn}", f"organization:{owner}", "operated by", 88))
+        summary = f"{address}"
+        if asn:
+            summary += f" is announced by AS{asn}"
+        if owner:
+            summary += f" ({owner})"
+        if country:
+            summary += f" in {country}"
+        return _result(
+            "asn", started, status="success", summary=summary + ".",
+            findings=tuple(findings),
+            evidence=(IntelligenceEvidence("ASN", "ASN and network ownership", "whois.cymru.com", json.dumps(payload, indent=2)),),
+            relationships=tuple(relationships), risk=0, confidence=90 if asn else 60,
+        )
+    except Exception as exc:
+        return _result(
+            "asn", started, status="error", summary="ASN collection failed.",
+            risk=0, confidence=0, error=str(exc),
+        )
+
+
+def geoip_module(target: str, timeout: float = 7.0, **_) -> IntelligenceModuleResult:
+    """Collect coarse public IP geolocation without requiring an API key."""
+    started = time.perf_counter()
+    try:
+        address = _resolve_primary_ip(target)
+        conn = HTTPSConnection("ipwho.is", timeout=timeout)
+        try:
+            conn.request("GET", f"/{address}", headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
+            response = conn.getresponse()
+            body = response.read(100_000)
+        finally:
+            conn.close()
+        if response.status != 200:
+            raise OSError(f"GeoIP provider returned HTTP {response.status}.")
+        payload = json.loads(body.decode("utf-8", errors="replace"))
+        if payload.get("success") is False:
+            raise OSError(payload.get("message") or "GeoIP provider rejected the request.")
+        connection = payload.get("connection") or {}
+        location = ", ".join(
+            str(value) for value in (payload.get("city"), payload.get("region"), payload.get("country")) if value
+        ) or "Unknown location"
+        organization = connection.get("org") or connection.get("isp") or ""
+        findings = [IntelligenceFinding("Approximate location", location, confidence=75, node_kind="LOCATION")]
+        if organization:
+            findings.append(IntelligenceFinding("Hosting organization", organization, confidence=78, node_kind="ORGANIZATION"))
+        relationships = [IntelligenceRelationship(f"ip:{address}", f"location:{location}", "located near", 70)]
+        if organization:
+            relationships.append(IntelligenceRelationship(f"ip:{address}", f"organization:{organization}", "hosted by", 78))
+        return _result(
+            "geoip", started, status="success",
+            summary=f"{address} maps approximately to {location}" + (f" via {organization}." if organization else "."),
+            findings=tuple(findings),
+            evidence=(IntelligenceEvidence("GEOIP", "Public IP geolocation", "ipwho.is", json.dumps(payload, indent=2, default=str)),),
+            relationships=tuple(relationships), risk=0, confidence=75,
+        )
+    except Exception as exc:
+        return _result(
+            "geoip", started, status="error", summary="GeoIP collection failed.",
+            risk=0, confidence=0, error=str(exc),
+        )
+
+def scan_context_module(target: str, scan_result=None, attack_surface=None, **_) -> IntelligenceModuleResult:
+    """Convert existing scan evidence into the common intelligence model.
+
+    This module performs no new network requests. It lets the core intelligence
+    engine become the single source of truth for the scanner, cases, graphs, and
+    reports while preserving the original scan result.
+    """
+    started = time.perf_counter()
+    if scan_result is None:
+        return _result(
+            "scan_context", started, status="skipped",
+            summary="No scan context was supplied.", risk=0, confidence=0,
+        )
+
+    open_ports = list(getattr(scan_result, "open_ports", ()))
+    findings = []
+    evidence = []
+    relationships = []
+    services = []
+
+    for port in open_ports:
+        service = getattr(port, "service", "unknown") or "unknown"
+        services.append(service)
+        port_number = int(getattr(port, "port", 0))
+        banner = getattr(port, "banner", None)
+        findings.append(
+            IntelligenceFinding(
+                "Open service observed",
+                f"TCP/{port_number} identified as {service}.",
+                "INFO", 0, 95, "SERVICE",
+                {"port": port_number, "service": service},
+            )
+        )
+        evidence.append(
+            IntelligenceEvidence(
+                "SERVICE", f"TCP/{port_number} {service}", target,
+                banner or f"Service identification: {service}",
+                {"port": port_number, "service": service},
+            )
+        )
+        relationships.append(
+            IntelligenceRelationship(
+                f"target:{target}", f"service:{target}:{port_number}", "exposes", 96
+            )
+        )
+
+    surface = attack_surface or getattr(scan_result, "attack_surface", None) or {}
+    if hasattr(surface, "to_dict"):
+        surface = surface.to_dict()
+    surface_risk = int(surface.get("risk_score", 0)) if isinstance(surface, dict) else 0
+    technologies = surface.get("technologies", []) if isinstance(surface, dict) else []
+    for technology in technologies:
+        findings.append(
+            IntelligenceFinding(
+                "Technology detected", str(technology), "INFO", 0, 80, "TECHNOLOGY"
+            )
+        )
+        relationships.append(
+            IntelligenceRelationship(
+                f"target:{target}", f"technology:{technology}", "uses", 80
+            )
+        )
+
+    payload = {
+        "target": getattr(scan_result, "target", target),
+        "ip": getattr(scan_result, "ip", ""),
+        "hostname": getattr(scan_result, "hostname", None),
+        "operation_id": getattr(scan_result, "operation_id", None),
+        "profile": getattr(scan_result, "profile", "custom"),
+        "open_ports": [getattr(item, "port", None) for item in open_ports],
+        "services": sorted(set(services)),
+        "attack_surface": surface,
+    }
+    evidence.append(
+        IntelligenceEvidence(
+            "SCAN", "Reconnaissance scan context", target,
+            json.dumps(payload, indent=2, default=str),
+        )
+    )
+    return _result(
+        "scan_context", started, status="success",
+        summary=f"Imported {len(open_ports)} open service(s) and {len(technologies)} technology signature(s).",
+        findings=tuple(findings), evidence=tuple(evidence),
+        relationships=tuple(relationships), risk=surface_risk, confidence=96,
+    )
+
 def technology_module(target: str, prior_results=(), **_) -> IntelligenceModuleResult:
     started = time.perf_counter()
     text_parts = []
@@ -368,9 +568,12 @@ def technology_module(target: str, prior_results=(), **_) -> IntelligenceModuleR
 
 
 BUILTIN_MODULES: tuple[tuple[str, Callable[..., IntelligenceModuleResult]], ...] = (
+    ("scan_context", scan_context_module),
     ("dns", dns_module),
     ("reverse_dns", reverse_dns_module),
     ("whois", whois_module),
+    ("asn", asn_module),
+    ("geoip", geoip_module),
     ("ssl", ssl_module),
     ("http", http_module),
     ("technology", technology_module),

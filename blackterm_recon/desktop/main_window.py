@@ -13,6 +13,8 @@ from .pages.history import HistoryPage
 from .pages.mission_control import MissionControlPage
 from .operator_dashboard_page import OperatorDashboardPage
 from .pages.network import NetworkPage
+from .pages.osint import OSINTPage
+from .pages.threat_intelligence import ThreatIntelligencePage
 from .pages.platform import PlatformPage
 from .pages.plugins import PluginsPage
 from .pages.reports import ReportsPage
@@ -65,6 +67,8 @@ class MainWindow(QMainWindow):
         self.investigation_workspace = InvestigationWorkspacePage(engine)
         self.autonomous = AutonomousInvestigation(engine, event_bus, self)
         self.network = NetworkPage(engine)
+        self.osint = OSINTPage(engine, event_bus)
+        self.threat_intelligence = ThreatIntelligencePage(engine, event_bus)
         self.terminal = TerminalPage(engine, self.navigate_to_label)
         self.cases = CasesPage(engine, event_bus)
         self.events = EventFeedPage(event_bus, event_store)
@@ -84,6 +88,8 @@ class MainWindow(QMainWindow):
             ("ATTACK SURFACE", self.attack_surface),
             ("INVESTIGATION WORKSPACE", self.investigation_workspace),
             ("NETWORK MAP", self.network),
+            ("OSINT", self.osint),
+            ("THREAT INTELLIGENCE", self.threat_intelligence),
             ("TERMINAL", self.terminal),
             ("CASES", self.cases),
             ("EVENT FEED", self.events),
@@ -138,6 +144,10 @@ class MainWindow(QMainWindow):
         self.autonomous.case_created.connect(self.cases.refresh)
         self.autonomous.case_created.connect(self.cases.select_case)
         self.autonomous.case_created.connect(self.open_case)
+        self.osint.case_created.connect(self.cases.refresh)
+        self.osint.case_created.connect(self.open_case)
+        self.threat_intelligence.case_created.connect(self.cases.refresh)
+        self.threat_intelligence.case_created.connect(self.open_case)
         self.operator_dashboard.open_case_requested.connect(self.open_case)
         self.operator_dashboard.live_investigation_requested.connect(
             self.open_live_investigation
@@ -213,6 +223,9 @@ class MainWindow(QMainWindow):
                 "workspace": "INVESTIGATION WORKSPACE",
                 "graph": "INVESTIGATION WORKSPACE",
                 "map": "NETWORK MAP",
+                "osint": "OSINT",
+                "threat": "THREAT INTELLIGENCE",
+                "intel": "THREAT INTELLIGENCE",
                 "terminal": "TERMINAL",
                 "cases": "CASES",
                 "events": "EVENT FEED",
@@ -229,6 +242,8 @@ class MainWindow(QMainWindow):
                 return
         if parts[0] in {"operator", "home"}:
             self.navigate_to_label("OPERATOR DASHBOARD")
+        elif parts[0] == "osint":
+            self.navigate_to_label("OSINT")
         elif parts[0] == "history":
             self.navigate_to_label("HISTORY")
         elif parts[0] == "scan":
@@ -243,7 +258,7 @@ class MainWindow(QMainWindow):
     def navigate_to_label(self, label):
         index = self.page_index.get(label)
         if index is not None:
-            self.dock.buttons[label].setChecked(True)
+            self.dock.select_label(label)
             self.show_page(index)
 
     def show_page(self, index):

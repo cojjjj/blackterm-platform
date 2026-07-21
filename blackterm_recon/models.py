@@ -20,8 +20,8 @@ class PortResult:
 @dataclass(slots=True)
 class TechnologyFingerprint:
     name: str
-    category: str
-    confidence: int
+    category: str = "technology"
+    confidence: int = 0
     evidence: list[str] = field(default_factory=list)
     sources: list[str] = field(default_factory=list)
     ports: list[int] = field(default_factory=list)
@@ -43,6 +43,7 @@ class ScanResult:
     operation_id: str | None = None
     profile: str = "custom"
     attack_surface: dict[str, Any] = field(default_factory=dict)
+    intelligence: dict[str, Any] = field(default_factory=dict)
     fingerprints: list[TechnologyFingerprint] = field(default_factory=list)
 
     @property

@@ -6,7 +6,7 @@ import sqlite3
 from .models import PortResult, ScanResult, TechnologyFingerprint
 
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 SCHEMA = """
 PRAGMA foreign_keys = ON;
@@ -27,7 +27,9 @@ CREATE TABLE IF NOT EXISTS scans (
     plugin_results_json TEXT NOT NULL DEFAULT '{}',
     operation_id TEXT,
     profile TEXT NOT NULL DEFAULT 'custom',
-    attack_surface_json TEXT NOT NULL DEFAULT '{}'
+    attack_surface_json TEXT NOT NULL DEFAULT '{}',
+    intelligence_json TEXT NOT NULL DEFAULT '{}',
+    fingerprints_json TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS cases (
@@ -131,6 +133,7 @@ class ScanRepository:
                 "operation_id": "ALTER TABLE scans ADD COLUMN operation_id TEXT",
                 "profile": "ALTER TABLE scans ADD COLUMN profile TEXT NOT NULL DEFAULT 'custom'",
                 "attack_surface_json": "ALTER TABLE scans ADD COLUMN attack_surface_json TEXT NOT NULL DEFAULT '{}'",
+                "intelligence_json": "ALTER TABLE scans ADD COLUMN intelligence_json TEXT NOT NULL DEFAULT '{}'",
                 "fingerprints_json": "ALTER TABLE scans ADD COLUMN fingerprints_json TEXT NOT NULL DEFAULT '[]'",
             }
             for column, statement in migrations.items():
@@ -148,14 +151,14 @@ class ScanRepository:
                 INSERT INTO scans (
                     target, ip, hostname, started_at, finished_at,
                     duration_seconds, plugin_results_json, operation_id, profile,
-                    attack_surface_json, fingerprints_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    attack_surface_json, intelligence_json, fingerprints_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     result.target, result.ip, result.hostname, result.started_at,
                     result.finished_at, result.duration_seconds,
                     json.dumps(result.plugin_results), result.operation_id, result.profile,
-                    json.dumps(result.attack_surface),
+                    json.dumps(result.attack_surface), json.dumps(result.intelligence),
                     json.dumps([item.to_dict() for item in result.fingerprints]),
                 ),
             )
@@ -211,6 +214,7 @@ class ScanRepository:
             operation_id=scan["operation_id"] if "operation_id" in scan.keys() else None,
             profile=scan["profile"] if "profile" in scan.keys() else "custom",
             attack_surface=json.loads(scan["attack_surface_json"] or "{}") if "attack_surface_json" in scan.keys() else {},
+            intelligence=json.loads(scan["intelligence_json"] or "{}") if "intelligence_json" in scan.keys() else {},
             fingerprints=[
                 TechnologyFingerprint(**item)
                 for item in (json.loads(scan["fingerprints_json"] or "[]") if "fingerprints_json" in scan.keys() else [])

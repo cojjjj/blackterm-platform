@@ -6,6 +6,7 @@ from .plugins import PluginManager
 from .scanner import scan_host
 from .operations import new_operation_id
 from .attack_surface import build_attack_surface
+from .intelligence import IntelligenceEngine
 from .fingerprinting import fingerprint_scan
 
 
@@ -75,10 +76,20 @@ class ReconEngine:
         result.plugin_results = self.plugins.execute_all(
             ScanContext(result=result, config=self.config)
         )
+        # Fingerprint once, then share the same normalized evidence with every
+        # consumer (attack surface, intelligence, cases, graphs, and reports).
         result.fingerprints = fingerprint_scan(
-            result, timeout=max(1.0, self.config.banner_timeout)
+            result, timeout=max(0.25, min(8.0, getattr(self.config, "timeout", 2.5)))
         )
         result.attack_surface = build_attack_surface(result).to_dict()
+        # Normalize scanner evidence through the shared intelligence model. This
+        # stage is passive and performs no extra network requests. Richer DNS,
+        # WHOIS, TLS, and HTTP modules can be run from Live Intelligence later.
+        intelligence_result = IntelligenceEngine(
+            timeout=max(2.0, getattr(self.config, "timeout", 2.0)),
+            max_workers=max(1, getattr(self.config, "workers", 4)),
+        ).run_for_scan(result)
+        result.intelligence = intelligence_result.to_dict()
         if self.event_bus:
             from .events import EventLevel
             services = sorted({item.service for item in result.open_ports})
@@ -92,7 +103,7 @@ class ReconEngine:
                 title="Automated Scan Analysis",
                 level=EventLevel.AI,
                 module="assistant",
-                metadata={"target": target},
+                metadata={"target": target, "intelligence_level": intelligence_result.level, "intelligence_confidence": intelligence_result.confidence},
             )
         scan_id = self.repository.save(result)
         events.append((

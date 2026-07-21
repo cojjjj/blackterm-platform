@@ -230,11 +230,13 @@ def build_attack_surface(result: ScanResult) -> AttackSurface:
         open_ports=[port.port for port in open_ports],
         services=services,
         technologies=(
-            [item.name for item in result.fingerprints]
-            if result.fingerprints
+            [item.name for item in getattr(result, "fingerprints", ())]
+            if getattr(result, "fingerprints", ())
             else _detect_technologies(open_ports, result.plugin_results)
         ),
-        technology_details=[item.to_dict() for item in result.fingerprints],
+        technology_details=[
+            item.to_dict() for item in getattr(result, "fingerprints", ())
+        ],
         findings=findings,
         exposure_categories=categories,
         risk_score=risk_score,

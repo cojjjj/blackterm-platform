@@ -32,7 +32,7 @@ class PlatformPage(QWidget):
             name.setStyleSheet("font-size: 18px; font-weight: 850;")
             status = QLabel(module.status)
             status.setObjectName(
-                "statusActive" if module.status in {"ACTIVE", "READY FOR INTEGRATION"}
+                "statusActive" if module.status in {"ACTIVE", "ACTIVE BETA", "READY FOR INTEGRATION"}
                 else "statusPlanned"
             )
             description = QLabel(module.description)
