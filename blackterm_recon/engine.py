@@ -4,6 +4,8 @@ from .database import ScanRepository
 from .models import ScanContext
 from .plugins import PluginManager
 from .scanner import scan_host
+from .operations import new_operation_id
+from .attack_surface import build_attack_surface
 
 
 class ReconEngine:
@@ -15,20 +17,24 @@ class ReconEngine:
         self.plugins = PluginManager(config.plugin_directory, logger)
         self.plugins.discover()
 
-    def scan(self, target, ports, progress=None):
-        self.logger.info("Scan started target=%s ports=%d", target, len(ports))
+    def scan(self, target, ports, progress=None, profile="custom"):
+        operation_id = new_operation_id()
+        self.logger.info(
+            "Scan started operation=%s target=%s ports=%d profile=%s",
+            operation_id, target, len(ports), profile,
+        )
         if self.event_bus:
             from .events import EventLevel
             self.event_bus.emit(
                 "network", f"Scanning {target} across {len(ports)} TCP ports.",
                 title="Scan Started", level=EventLevel.INFO, module="recon",
-                metadata={"target": target, "ports": len(ports)},
+                metadata={"target": target, "ports": len(ports), "operation_id": operation_id, "profile": profile},
             )
         events = []
         events.append((
             datetime.now(timezone.utc).isoformat(),
             "START",
-            f"Scan started for {target} across {len(ports)} ports",
+            f"{operation_id} started for {target} across {len(ports)} ports ({profile})",
         ))
 
         def wrapped_progress(done, total, item):
@@ -61,10 +67,14 @@ class ReconEngine:
             if progress:
                 progress(done, total, item)
 
-        result = scan_host(target, ports, self.config, wrapped_progress)
+        result = scan_host(
+            target, ports, self.config, wrapped_progress,
+            operation_id=operation_id, profile=profile,
+        )
         result.plugin_results = self.plugins.execute_all(
             ScanContext(result=result, config=self.config)
         )
+        result.attack_surface = build_attack_surface(result).to_dict()
         if self.event_bus:
             from .events import EventLevel
             services = sorted({item.service for item in result.open_ports})
@@ -88,8 +98,8 @@ class ReconEngine:
         ))
         self.repository.save_events(scan_id, events)
         self.logger.info(
-            "Scan complete id=%d target=%s open_ports=%d",
-            scan_id, target, len(result.open_ports)
+            "Scan complete id=%d operation=%s target=%s open_ports=%d",
+            scan_id, operation_id, target, len(result.open_ports)
         )
         if self.event_bus:
             from .events import EventLevel

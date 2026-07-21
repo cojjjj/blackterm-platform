@@ -1,0 +1,12 @@
+BLACKTERM RECON v6.0 GRAPH WORKSPACE UPDATE
+
+Replace these files in your project:
+
+1. blackterm_recon/desktop/attack_surface_graph.py
+2. blackterm_recon/desktop/pages/attack_surface.py
+
+Then launch normally:
+
+python -m blackterm_recon gui
+
+No pip reinstall is required.

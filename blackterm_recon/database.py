@@ -6,7 +6,7 @@ import sqlite3
 from .models import PortResult, ScanResult
 
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 SCHEMA = """
 PRAGMA foreign_keys = ON;
@@ -24,7 +24,10 @@ CREATE TABLE IF NOT EXISTS scans (
     started_at TEXT NOT NULL,
     finished_at TEXT NOT NULL,
     duration_seconds REAL NOT NULL,
-    plugin_results_json TEXT NOT NULL DEFAULT '{}'
+    plugin_results_json TEXT NOT NULL DEFAULT '{}',
+    operation_id TEXT,
+    profile TEXT NOT NULL DEFAULT 'custom',
+    attack_surface_json TEXT NOT NULL DEFAULT '{}'
 );
 
 CREATE TABLE IF NOT EXISTS cases (
@@ -125,6 +128,9 @@ class ScanRepository:
             migrations = {
                 "hostname": "ALTER TABLE scans ADD COLUMN hostname TEXT",
                 "plugin_results_json": "ALTER TABLE scans ADD COLUMN plugin_results_json TEXT NOT NULL DEFAULT '{}'",
+                "operation_id": "ALTER TABLE scans ADD COLUMN operation_id TEXT",
+                "profile": "ALTER TABLE scans ADD COLUMN profile TEXT NOT NULL DEFAULT 'custom'",
+                "attack_surface_json": "ALTER TABLE scans ADD COLUMN attack_surface_json TEXT NOT NULL DEFAULT '{}'",
             }
             for column, statement in migrations.items():
                 if column not in columns:
@@ -140,13 +146,15 @@ class ScanRepository:
                 """
                 INSERT INTO scans (
                     target, ip, hostname, started_at, finished_at,
-                    duration_seconds, plugin_results_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    duration_seconds, plugin_results_json, operation_id, profile,
+                    attack_surface_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     result.target, result.ip, result.hostname, result.started_at,
                     result.finished_at, result.duration_seconds,
-                    json.dumps(result.plugin_results),
+                    json.dumps(result.plugin_results), result.operation_id, result.profile,
+                    json.dumps(result.attack_surface),
                 ),
             )
             scan_id = int(cursor.lastrowid)
@@ -198,6 +206,9 @@ class ScanRepository:
             finished_at=scan["finished_at"],
             duration_seconds=scan["duration_seconds"],
             plugin_results=json.loads(scan["plugin_results_json"] or "{}"),
+            operation_id=scan["operation_id"] if "operation_id" in scan.keys() else None,
+            profile=scan["profile"] if "profile" in scan.keys() else "custom",
+            attack_surface=json.loads(scan["attack_surface_json"] or "{}") if "attack_surface_json" in scan.keys() else {},
             ports=[
                 PortResult(
                     port=p["port"], state=p["state"], service=p["service"],

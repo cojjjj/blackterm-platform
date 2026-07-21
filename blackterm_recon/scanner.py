@@ -7,6 +7,7 @@ import socket
 from .banner import grab_banner
 from .config import AppConfig
 from .models import PortResult, ScanResult
+from .operations import new_operation_id
 from .resolver import enforce_target_policy
 from .services import identify_service
 
@@ -36,7 +37,15 @@ def scan_port(ip, port, timeout, banners, banner_timeout) -> PortResult:
         return PortResult(port=port, state="error", error=str(exc))
 
 
-def scan_host(target: str, ports: list[int], config: AppConfig, progress=None) -> ScanResult:
+def scan_host(
+    target: str,
+    ports: list[int],
+    config: AppConfig,
+    progress=None,
+    *,
+    operation_id: str | None = None,
+    profile: str = "custom",
+) -> ScanResult:
     ip, hostname = enforce_target_policy(target, config.allow_public_targets)
     started_at = datetime.now(timezone.utc)
     timer = perf_counter()
@@ -70,4 +79,6 @@ def scan_host(target: str, ports: list[int], config: AppConfig, progress=None) -
         started_at=started_at.isoformat(),
         finished_at=finished_at.isoformat(),
         duration_seconds=round(perf_counter() - timer, 3),
+        operation_id=operation_id or new_operation_id(),
+        profile=profile,
     )

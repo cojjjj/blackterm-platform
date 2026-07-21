@@ -17,6 +17,8 @@ from .pages.platform import PlatformPage
 from .pages.plugins import PluginsPage
 from .pages.reports import ReportsPage
 from .pages.scan import ScanPage
+from .pages.attack_surface import AttackSurfacePage
+from .pages.investigation_workspace import InvestigationWorkspacePage
 from .pages.settings import SettingsPage
 from .pages.terminal import TerminalPage
 from .theme import stylesheet
@@ -34,7 +36,7 @@ class MainWindow(QMainWindow):
         self.operator = operator
         self.event_bus = event_bus
         self.event_store = event_store
-        self.setWindowTitle("BLACKTERM Intelligence Platform v8.6 // Stability Foundation")
+        self.setWindowTitle("BLACKTERM RECON v5.7 // Interactive Attack Surface Graph")
         self.resize(1540, 920)
         self.setMinimumSize(1160, 740)
         self.setMouseTracking(True)
@@ -59,6 +61,8 @@ class MainWindow(QMainWindow):
         )
         self.dashboard = DashboardPage(engine, operator)
         self.scan = ScanPage(engine)
+        self.attack_surface = AttackSurfacePage(engine)
+        self.investigation_workspace = InvestigationWorkspacePage(engine)
         self.autonomous = AutonomousInvestigation(engine, event_bus, self)
         self.network = NetworkPage(engine)
         self.terminal = TerminalPage(engine, self.navigate_to_label)
@@ -77,6 +81,8 @@ class MainWindow(QMainWindow):
             ("PLATFORM", self.platform),
             ("DASHBOARD", self.dashboard),
             ("LIVE SCAN", self.scan),
+            ("ATTACK SURFACE", self.attack_surface),
+            ("INVESTIGATION WORKSPACE", self.investigation_workspace),
             ("NETWORK MAP", self.network),
             ("TERMINAL", self.terminal),
             ("CASES", self.cases),
@@ -88,6 +94,12 @@ class MainWindow(QMainWindow):
             ("SETTINGS", self.settings),
         ]
         self.page_index = {label: index for index, (label, _) in enumerate(self.pages)}
+
+        self.scan.scan_completed.connect(self.attack_surface.show_result)
+        self.attack_surface.investigationRequested.connect(self.open_investigation_workspace)
+        self.investigation_workspace.backRequested.connect(
+            lambda: self.navigate_to_label("ATTACK SURFACE")
+        )
 
         for _, page in self.pages:
             self.stack.addWidget(page)
@@ -138,6 +150,10 @@ class MainWindow(QMainWindow):
         root_widget.installEventFilter(self)
 
 
+    def open_investigation_workspace(self, scan_id=None):
+        self.navigate_to_label("INVESTIGATION WORKSPACE")
+        self.investigation_workspace.select_scan(scan_id)
+
     def open_live_investigation(self):
         self.navigate_to_label("CASES")
         if hasattr(self.cases, "open_intelligence_engine"):
@@ -169,8 +185,13 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
 
     def eventFilter(self, watched, event):
+        # RenderSurface currently does not expose mouse-reactive particles.
+        # Keep this guarded so mouse movement can never crash the main window.
         if event.type() == QEvent.MouseMove:
-            self.particles.set_mouse_position(event.position())
+            render_surface = getattr(self, "render_surface", None)
+            set_mouse_position = getattr(render_surface, "set_mouse_position", None)
+            if callable(set_mouse_position):
+                set_mouse_position(event.position())
         return super().eventFilter(watched, event)
 
     def execute_command(self, command):
@@ -186,6 +207,11 @@ class MainWindow(QMainWindow):
                 "platform": "PLATFORM",
                 "dashboard": "DASHBOARD",
                 "scan": "LIVE SCAN",
+                "attack": "ATTACK SURFACE",
+                "surface": "ATTACK SURFACE",
+                "investigation": "INVESTIGATION WORKSPACE",
+                "workspace": "INVESTIGATION WORKSPACE",
+                "graph": "INVESTIGATION WORKSPACE",
                 "map": "NETWORK MAP",
                 "terminal": "TERMINAL",
                 "cases": "CASES",

@@ -21,6 +21,7 @@ NAV_ICONS = {
     "PLATFORM": "◆",
     "DASHBOARD": "⌂",
     "LIVE SCAN": "⌁",
+    "ATTACK SURFACE": "◈",
     "NETWORK MAP": "◉",
     "TERMINAL": ">_",
     "CASES": "▣",

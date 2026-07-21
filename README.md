@@ -1,3 +1,29 @@
+
+## Attack Surface Intelligence
+
+Every completed authorized scan now produces a consolidated attack-surface profile with:
+
+- Open ports and classified services
+- Network, web, remote-administration, and database exposure categories
+- Lightweight technology signatures from banners and plugin data
+- Prioritized findings with evidence and defensive recommendations
+- Overall risk and surface-health scores
+- Historical scan selection from the desktop Attack Surface page
+
+The scoring is contextual triage, not proof of a vulnerability. Findings should be validated by an authorized operator.
+
+## New in v5.4 — Operation Profiles
+
+BLACKTERM RECON now includes a safer, profile-driven assessment workflow:
+
+- **Quick** — six high-value common services
+- **Standard** — balanced common-port assessment with banner detection
+- **Full** — broader lab-oriented TCP assessment
+- **Custom** — operator-selected ports and banner settings
+- Mandatory authorization confirmation before execution
+- Unique operation IDs such as `BT-20260720-194211-A3F9`
+- Four-stage live scan timeline and clearer evidence records
+
 # BLACKTERM v8.6 — Stability Foundation
 
 ```text

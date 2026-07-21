@@ -27,6 +27,9 @@ class ScanResult:
     duration_seconds: float
     hostname: str | None = None
     plugin_results: dict[str, Any] = field(default_factory=dict)
+    operation_id: str | None = None
+    profile: str = "custom"
+    attack_surface: dict[str, Any] = field(default_factory=dict)
 
     @property
     def open_ports(self) -> list[PortResult]:

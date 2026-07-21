@@ -7,11 +7,12 @@ class ScanWorker(QObject):
     failed = Signal(str)
     finished = Signal()
 
-    def __init__(self, engine, target, ports):
+    def __init__(self, engine, target, ports, profile="custom"):
         super().__init__()
         self.engine = engine
         self.target = target
         self.ports = ports
+        self.profile = profile
 
     @Slot()
     def run(self):
@@ -20,6 +21,7 @@ class ScanWorker(QObject):
                 self.target,
                 self.ports,
                 progress=lambda done, total, item: self.progress.emit(done, total, item),
+                profile=self.profile,
             )
             self.completed.emit(scan_id, result)
         except Exception as exc:
