@@ -1,4 +1,6 @@
-
+<div align="center">
+  <img src="assets/blackterm-hero.svg" alt="BLACKTERM — Autonomous Cyber Investigation Platform" width="100%">
+</div>
 <div align="center">
 
 # BLACKTERM
