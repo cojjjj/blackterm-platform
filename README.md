@@ -1,73 +1,261 @@
 
-## Attack Surface Intelligence
-
-Every completed authorized scan now produces a consolidated attack-surface profile with:
-
-- Open ports and classified services
-- Network, web, remote-administration, and database exposure categories
-- Lightweight technology signatures from banners and plugin data
-- Prioritized findings with evidence and defensive recommendations
-- Overall risk and surface-health scores
-- Historical scan selection from the desktop Attack Surface page
-
-The scoring is contextual triage, not proof of a vulnerability. Findings should be validated by an authorized operator.
-
-## New in v5.4 — Operation Profiles
-
-BLACKTERM RECON now includes a safer, profile-driven assessment workflow:
-
-- **Quick** — six high-value common services
-- **Standard** — balanced common-port assessment with banner detection
-- **Full** — broader lab-oriented TCP assessment
-- **Custom** — operator-selected ports and banner settings
-- Mandatory authorization confirmation before execution
-- Unique operation IDs such as `BT-20260720-194211-A3F9`
-- Four-stage live scan timeline and clearer evidence records
-
-# BLACKTERM v8.6 — Stability Foundation
-
-```text
-RenderSurface
-    one ambient compositor
-
-WidgetAnimator
-    paint-safe widget updates
-
-GraphicsItemAnimator
-    timer-driven graph motion
-
-Current tests
-    validate the architecture that ships
-```
-
-## Responsible Use
-
-Only scan or analyze assets you own or are explicitly authorized to test. BLACKTERM is built for education, defensive security, lab use, authorized assessments, and portfolio development.
-
-## Contributing
-
-Ideas, bug reports, and focused pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing.
-
-## Security
-
-Do not publish sensitive vulnerability details in a public issue. Follow [SECURITY.md](SECURITY.md).
-
-## License
-
-Released under the [MIT License](LICENSE).
-
----
-
 <div align="center">
 
-Built by [cojjjj](https://github.com/cojjjj) — active development, public preview.
+# BLACKTERM
+
+### Autonomous Cyber Investigation Platform
+
+Reconnaissance • Attack Surface Intelligence • OSINT • Threat Intelligence • AI Investigation
+
+<p>
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white">
+  <img src="https://img.shields.io/badge/License-MIT-success?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Status-Active%20Development-purple?style=for-the-badge">
+</p>
+
+*"One investigation. One platform."*
 
 </div>
 
-<!-- BLACKTERM_STATS_START -->
-## `blackterm> project --stats`
+---
+
+# 🚀 Overview
+
+BLACKTERM is an **AI-powered desktop cyber investigation platform** built for security researchers, blue teams, students, and penetration testers. Rather than relying on multiple disconnected tools, BLACKTERM brings reconnaissance, intelligence gathering, attack surface analysis, case management, visualization, and reporting into one unified workspace.
+
+Every investigation is organized as a case, allowing analysts to collect evidence, enrich indicators, visualize relationships, and generate reports without leaving the platform.
+
+---
+
+# ✨ Why BLACKTERM?
+
+Most cybersecurity tools solve **one** problem.
+
+BLACKTERM solves the **entire investigation workflow**.
+
+Instead of switching between:
+
+- Recon tools
+- WHOIS websites
+- DNS lookups
+- Threat intelligence portals
+- Notes
+- Screenshots
+- Reporting software
+
+BLACKTERM combines everything into a single investigation platform.
+
+---
+
+# 🎯 Core Capabilities
+
+| Capability | Description |
+|------------|-------------|
+| 🛰 Reconnaissance | Discover hosts, services and exposed infrastructure |
+| 🌐 Attack Surface Intelligence | Analyze public-facing assets and technologies |
+| 🔍 OSINT | WHOIS, DNS, SSL, HTTP, GeoIP and technology fingerprinting |
+| 🛡 Threat Intelligence | Reputation analysis and IOC enrichment |
+| 📁 Investigation Workspace | Organize evidence into cases |
+| 🗺 Global Intelligence Map | Visualize investigation targets geographically |
+| 🕸 Relationship Explorer | Discover relationships between domains, IPs and evidence |
+| 🤖 AI Investigation | AI-assisted investigation summaries |
+| 📊 Reporting | Export investigation reports and findings |
+
+---
+
+# 🖥 Platform Preview
+
+> Replace these placeholders with screenshots as you continue developing BLACKTERM.
+
+| Mission Control | Investigation Workspace |
+|----------------|-------------------------|
+| ![](docs/screenshots/mission-control.png) | ![](docs/screenshots/investigation-workspace.png) |
+
+| Threat Intelligence | Global Intelligence Map |
+|--------------------|-------------------------|
+| ![](docs/screenshots/threat-intelligence.png) | ![](docs/screenshots/global-map.png) |
+
+| Relationship Explorer |
+|------------------------|
+| ![](docs/screenshots/relationship-graph.png) |
+
+---
+
+# ⚡ Investigation Workflow
 
 ```text
+Mission Control
+        │
+        ▼
+Reconnaissance
+        │
+        ▼
+Attack Surface Intelligence
+        │
+        ▼
+OSINT Collection
+        │
+        ▼
+Threat Intelligence
+        │
+        ▼
+AI Investigation
+        │
+        ▼
+Evidence Collection
+        │
+        ▼
+Relationship Analysis
+        │
+        ▼
+Case Report
+```
+
+Every investigation flows through the same structured pipeline, making findings reproducible, organized, and easy to review.
+
+---
+
+# 🧩 Platform Modules
+
+## 🎯 Mission Control
+
+Your central command dashboard for launching investigations, monitoring activity, and tracking active cases.
+
+---
+
+## 🛰 Recon Engine
+
+Perform reconnaissance against authorized targets to collect technical information used throughout the investigation.
+
+---
+
+## 🌐 Attack Surface Intelligence
+
+Identify exposed technologies, services, infrastructure, and publicly accessible assets.
+
+---
+
+## 🔍 OSINT Center
+
+Collect publicly available intelligence including:
+
+- WHOIS
+- DNS
+- SSL Certificates
+- HTTP Headers
+- Technology Detection
+- GeoIP
+- ASN Information
+
+---
+
+## 🛡 Threat Intelligence Center
+
+Enrich indicators using threat intelligence sources to identify malicious infrastructure and suspicious activity.
+
+---
+
+## 🗂 Investigation Workspace
+
+Organize every investigation into structured cases containing:
+
+- Evidence
+- Notes
+- Screenshots
+- Intelligence
+- Relationships
+- Reports
+
+---
+
+## 🌍 Global Intelligence Map
+
+Visualize infrastructure and investigation targets across the world using an interactive geographic interface.
+
+---
+
+## 🕸 Relationship Explorer
+
+Understand how evidence connects through an interactive graph of:
+
+- Domains
+- IP Addresses
+- Certificates
+- Technologies
+- Organizations
+- Cases
+
+---
+
+## 🤖 AI Investigation
+
+Automatically summarize findings, identify patterns, and assist analysts with investigation reporting.
+
+---
+
+# 🚀 Quick Start
+
+Clone the repository:
+
+```bash
+git clone https://github.com/cojjjj/blackterm-platform.git
+```
+
+Navigate into the project:
+
+```bash
+cd blackterm-platform
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Launch BLACKTERM:
+
+```bash
+python main.py
+```
+
+---
+
+# 📌 Project Goals
+
+BLACKTERM is being built around five core principles:
+
+- 🧠 Investigation First
+- ⚡ Fast Intelligence Collection
+- 📂 Organized Case Management
+- 🌎 Visual Investigation
+- 🤖 AI-Assisted Analysis
+
+Every feature added to BLACKTERM supports one or more of these goals.
+
+---
+
+# 📈 Current Focus
+
+Current development is focused on expanding BLACKTERM into a complete cyber investigation ecosystem through improvements to:
+
+- Mission Control
+- Autonomous Investigation Engine
+- Threat Intelligence
+- Global Intelligence Map
+- Investigation Relationship Explorer
+- AI Analysis
+- Reporting
+- Case Management
+
+---
+
+> **⚠️ Responsible Use**
+>
+> BLACKTERM is intended for defensive security research, education, and authorized security assessments only. Always obtain permission before scanning or investigating systems that you do not own or explicitly have authorization to test.
+
+---
 ╔══════════════════════════════════════════════════════════════╗
 ║                 BLACKTERM PLATFORM v7.3.0                 ║
 ╚══════════════════════════════════════════════════════════════╝
