@@ -254,7 +254,338 @@ Current development is focused on expanding BLACKTERM into a complete cyber inve
 > **⚠️ Responsible Use**
 >
 > BLACKTERM is intended for defensive security research, education, and authorized security assessments only. Always obtain permission before scanning or investigating systems that you do not own or explicitly have authorization to test.
+---
 
+# 🏗 Platform Architecture
+
+BLACKTERM follows a modular architecture designed around the lifecycle of a cyber investigation. Every subsystem focuses on a specific stage of intelligence collection, analysis, visualization, and reporting while remaining tightly integrated through a unified investigation workspace.
+
+```text
+                                   BLACKTERM
+
+                             ┌────────────────────┐
+                             │  Mission Control   │
+                             └─────────┬──────────┘
+                                       │
+             ┌─────────────────────────┼─────────────────────────┐
+             │                         │                         │
+             ▼                         ▼                         ▼
+
+      Recon Engine          Attack Surface Intelligence       OSINT Center
+
+             │                         │                         │
+             └───────────────┬─────────┴─────────┬───────────────┘
+                             ▼
+                   Threat Intelligence Center
+                             │
+                             ▼
+                  AI Investigation Engine
+                             │
+              ┌──────────────┼──────────────┐
+              ▼              ▼              ▼
+
+      Case Workspace    Global Intelligence    Relationship Explorer
+
+              │              │              │
+              └──────────────┴──────────────┘
+                             │
+                             ▼
+                    Reporting & Export
+```
+
+BLACKTERM was designed so every module contributes to the same investigation rather than operating as isolated utilities.
+
+---
+
+# 🧩 Platform Components
+
+## 🎯 Mission Control
+
+Mission Control acts as the operational dashboard for BLACKTERM.
+
+It provides a centralized location for:
+
+- Active investigations
+- Recent activity
+- Platform status
+- Investigation shortcuts
+- Threat summaries
+- AI insights
+- Case statistics
+
+Mission Control serves as the starting point for every investigation.
+
+---
+
+## 🛰 Recon Engine
+
+The Recon Engine gathers technical information from authorized targets.
+
+Typical data collected includes:
+
+- IP addresses
+- Open ports
+- HTTP services
+- SSL certificates
+- Redirect chains
+- Server technologies
+- Response headers
+
+The collected data becomes the foundation for later intelligence modules.
+
+---
+
+## 🌐 Attack Surface Intelligence
+
+Attack Surface Intelligence analyzes the public exposure of a target.
+
+Examples include:
+
+- Web technologies
+- Security headers
+- TLS configuration
+- Certificate analysis
+- CDN detection
+- Redirects
+- Reverse proxies
+- Infrastructure fingerprinting
+
+The goal is to quickly understand how a target is exposed to the internet.
+
+---
+
+## 🔍 OSINT Center
+
+The OSINT Center enriches investigation data using publicly available intelligence.
+
+Supported intelligence includes:
+
+- WHOIS
+- DNS
+- GeoIP
+- ASN
+- HTTP Headers
+- SSL Certificates
+- Technology Detection
+- Reverse DNS
+
+OSINT information is automatically linked to the active investigation.
+
+---
+
+## 🛡 Threat Intelligence Center
+
+Threat Intelligence determines whether collected indicators have been observed in malicious activity.
+
+Capabilities include:
+
+- Indicator reputation
+- IOC enrichment
+- Risk scoring
+- Confidence scoring
+- Threat summaries
+- Evidence collection
+
+Future versions will support additional commercial and community intelligence feeds.
+
+---
+
+## 🤖 AI Investigation Engine
+
+The AI Investigation Engine assists analysts throughout the investigation.
+
+Current goals include:
+
+- Investigation summaries
+- Technical explanations
+- Pattern detection
+- IOC correlation
+- Report generation
+- Risk explanation
+
+The AI assists the analyst—it does not replace analyst judgment.
+
+---
+
+## 📂 Investigation Workspace
+
+Every investigation is stored as a dedicated case.
+
+Each case contains:
+
+- Notes
+- Evidence
+- Screenshots
+- Timeline
+- Intelligence
+- Relationships
+- Reports
+
+This keeps investigations organized and reproducible.
+
+---
+
+## 🌍 Global Intelligence Map
+
+The Global Intelligence Map visualizes infrastructure across geographic regions.
+
+Supported objects include:
+
+- Domains
+- IP addresses
+- Hosting providers
+- Countries
+- Investigation nodes
+
+Relationships between infrastructure become immediately visible.
+
+---
+
+## 🕸 Relationship Explorer
+
+The Relationship Explorer reveals connections between collected evidence.
+
+Relationships may include:
+
+- Domain → IP
+- IP → ASN
+- Domain → Certificate
+- Domain → Technology
+- Domain → Case
+- Domain → Threat Indicator
+
+Interactive graph layouts allow investigators to discover infrastructure that would otherwise remain hidden.
+
+---
+
+# ⚡ Investigation Lifecycle
+
+Every investigation follows a structured workflow.
+
+```text
+Target
+
+ │
+
+ ▼
+
+Reconnaissance
+
+ │
+
+ ▼
+
+Attack Surface Analysis
+
+ │
+
+ ▼
+
+OSINT Collection
+
+ │
+
+ ▼
+
+Threat Intelligence
+
+ │
+
+ ▼
+
+AI Investigation
+
+ │
+
+ ▼
+
+Evidence Collection
+
+ │
+
+ ▼
+
+Relationship Analysis
+
+ │
+
+ ▼
+
+Report Generation
+```
+
+This consistent workflow ensures investigations remain repeatable and well organized.
+
+---
+
+# 📁 Project Structure
+
+```text
+blackterm-platform/
+
+├── blackterm/
+│
+├── core/
+│   ├── scanner/
+│   ├── intelligence/
+│   ├── reports/
+│   ├── ai/
+│   ├── cases/
+│   └── utils/
+│
+├── gui/
+│   ├── mission_control/
+│   ├── workspace/
+│   ├── intelligence/
+│   ├── map/
+│   └── explorer/
+│
+├── assets/
+│
+├── docs/
+│
+├── screenshots/
+│
+├── tests/
+│
+└── main.py
+```
+
+---
+
+# 🔒 Security Philosophy
+
+BLACKTERM follows several core principles.
+
+- Investigation-first design
+- Modular architecture
+- Evidence preservation
+- Analyst transparency
+- Explainable AI
+- Offline-capable workflows where practical
+- Responsible security research
+
+Every feature is designed to support professional investigative workflows rather than automated exploitation.
+
+---
+
+# 🚀 Current Development
+
+Current areas of active development include:
+
+- Autonomous Investigation Engine
+- Relationship Graph improvements
+- Threat Intelligence expansion
+- Interactive Global Intelligence Map
+- Evidence Timeline
+- AI Correlation Engine
+- Advanced Reporting
+- Plugin Framework
+- Multi-case investigation support
+
+These features represent the next major milestones in BLACKTERM's evolution.
+
+---
 ---
 ╔══════════════════════════════════════════════════════════════╗
 ║                 BLACKTERM PLATFORM v7.3.0                 ║
