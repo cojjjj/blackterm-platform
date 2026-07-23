@@ -910,6 +910,112 @@ Keep your existing automated telemetry block (`BLACKTERM_STATS_START` / `BLACKTE
 
 ---
 
+# 🔄 Investigation Lifecycle
+
+BLACKTERM follows a structured investigation workflow that keeps reconnaissance, intelligence, evidence, and reporting connected inside a single workspace.
+
+<div align="center">
+
+```text
+                    TARGET
+                       │
+                       ▼
+              Reconnaissance Engine
+                       │
+                       ▼
+        Attack Surface Intelligence
+                       │
+                       ▼
+             OSINT Collection
+                       │
+                       ▼
+        Threat Intelligence Correlation
+                       │
+                       ▼
+          Investigation Workspace
+                       │
+                       ▼
+       Relationship Graph & Timeline
+                       │
+                       ▼
+            AI Investigation Engine
+                       │
+                       ▼
+             Analyst Report Export
+```
+
+</div>
+
+Every investigation becomes a persistent case containing:
+
+- 🌐 Reconnaissance results
+- 🔍 OSINT enrichment
+- 🛡 Threat intelligence
+- 🧠 AI-assisted analysis
+- 🗺 Relationship visualization
+- 📑 Evidence collection
+- 📈 Investigation timeline
+- 📄 Exportable reports
+
+Instead of switching between separate reconnaissance, OSINT, visualization, and reporting tools, BLACKTERM keeps the complete investigation lifecycle inside one desktop platform.
+
+# ✨ Platform Highlights
+
+<table>
+<tr>
+<td width="50%">
+
+### 🛰 Intelligence Collection
+
+- Reconnaissance
+- Attack Surface Analysis
+- OSINT Pipeline
+- Threat Intelligence
+- IOC Correlation
+
+</td>
+<td width="50%">
+
+### 📂 Investigation
+
+- Case Management
+- Evidence Locker
+- Timeline
+- Relationship Graph
+- AI Assistant
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 📊 Visualization
+
+- Mission Control
+- Operator Dashboard
+- Global Intelligence Map
+- Relationship Explorer
+- Live Event Feed
+
+</td>
+<td width="50%">
+
+### 📑 Reporting
+
+- AI Summaries
+- Findings
+- Risk Scoring
+- Evidence Export
+- Investigation Reports
+
+</td>
+</tr>
+</table>
+
+---
+---
+---
+
 <div align="center">
 
 ## BLACKTERM
