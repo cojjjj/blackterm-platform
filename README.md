@@ -584,7 +584,344 @@ Current areas of active development include:
 - Multi-case investigation support
 
 These features represent the next major milestones in BLACKTERM's evolution.
+---
 
+# ⚙️ Configuration
+
+BLACKTERM is designed to work out of the box, with additional functionality available through optional API integrations.
+
+## Optional Providers
+
+| Provider | Purpose | Required |
+|----------|---------|:--------:|
+| VirusTotal | File & URL reputation | ❌ |
+| AbuseIPDB | IP reputation | ❌ |
+| URLHaus | Malicious URL intelligence | ❌ |
+| OTX | Threat intelligence | ❌ |
+| Shodan *(Planned)* | Internet exposure | ❌ |
+| Censys *(Planned)* | Infrastructure intelligence | ❌ |
+
+If an API key is unavailable, BLACKTERM automatically disables that integration while continuing to operate normally.
+
+---
+
+# 🚀 Basic Usage
+
+Launch the application:
+
+```bash
+python main.py
+```
+
+Typical investigation workflow:
+
+```text
+Launch BLACKTERM
+
+↓
+
+Create Investigation
+
+↓
+
+Enter Target
+
+↓
+
+Reconnaissance
+
+↓
+
+OSINT Collection
+
+↓
+
+Threat Intelligence
+
+↓
+
+AI Investigation
+
+↓
+
+Evidence Review
+
+↓
+
+Generate Report
+```
+
+---
+
+# 💻 Example Use Cases
+
+## Infrastructure Recon
+
+- Discover technologies
+- Collect DNS records
+- Analyze certificates
+- Review HTTP headers
+
+---
+
+## Threat Investigation
+
+- Investigate suspicious domains
+- Review malicious IP reputation
+- Correlate indicators
+- Generate investigation summary
+
+---
+
+## Security Assessments
+
+- Attack surface review
+- Technology fingerprinting
+- Infrastructure mapping
+- Documentation
+
+---
+
+## Education
+
+BLACKTERM is also designed for:
+
+- Cybersecurity students
+- Blue Team practice
+- Home labs
+- Demonstrations
+- Research
+
+---
+
+# 📊 Platform Highlights
+
+✔ Unified Investigation Workspace
+
+✔ AI-Assisted Investigation
+
+✔ Modular Architecture
+
+✔ Interactive Intelligence Visualization
+
+✔ Case-Based Workflow
+
+✔ Expandable Intelligence Providers
+
+✔ Reporting Engine
+
+✔ Global Infrastructure Mapping
+
+✔ Relationship Analysis
+
+✔ Professional Desktop Interface
+
+---
+
+# 🧪 Testing
+
+BLACKTERM includes automated testing for core components where applicable.
+
+Run all tests:
+
+```bash
+pytest
+```
+
+Run a specific module:
+
+```bash
+pytest tests/
+```
+
+As the platform grows, testing coverage will continue expanding alongside new modules.
+
+---
+
+# 📂 Documentation
+
+Additional documentation is available within the repository.
+
+```text
+docs/
+
+Architecture
+
+Roadmap
+
+Screenshots
+
+Developer Guide
+
+Workflow
+
+Release Notes
+```
+
+---
+
+# 🛣 Roadmap
+
+## Current Generation
+
+- ✅ Mission Control
+- ✅ Investigation Workspace
+- ✅ Threat Intelligence
+- ✅ OSINT
+- ✅ Global Intelligence Map
+- ✅ Relationship Explorer
+- ✅ AI Investigation
+- ✅ Reporting
+
+---
+
+## Next Generation
+
+- 🔄 Autonomous Investigation Engine
+- 🔄 IOC Correlation
+- 🔄 Timeline Replay
+- 🔄 Advanced Case Management
+- 🔄 Plugin SDK
+- 🔄 Team Collaboration
+
+---
+
+## Long-Term Vision
+
+The long-term goal for BLACKTERM is to become a complete desktop cyber investigation platform capable of supporting the full lifecycle of technical investigations while remaining intuitive, extensible, and investigator-focused.
+
+---
+
+# ❓ Frequently Asked Questions
+
+## Is BLACKTERM free?
+
+Yes. BLACKTERM is open source and released under the MIT License.
+
+---
+
+## Does BLACKTERM require API keys?
+
+No.
+
+Core functionality works without external APIs.
+
+API integrations provide additional intelligence when configured.
+
+---
+
+## Can I contribute?
+
+Absolutely.
+
+Bug reports, feature requests, documentation improvements, and pull requests are all welcome.
+
+---
+
+## Is BLACKTERM intended for offensive security?
+
+BLACKTERM is designed primarily for investigation, intelligence gathering, and defensive security workflows.
+
+Users are responsible for ensuring they have authorization before investigating any target.
+
+---
+
+## Which operating systems are supported?
+
+Current development focuses primarily on Windows.
+
+Future platform support may expand over time.
+
+---
+
+# 🤝 Contributing
+
+Contributions are welcome from developers, researchers, students, and security professionals.
+
+Ways to contribute:
+
+- Improve documentation
+- Submit bug reports
+- Suggest new modules
+- Improve UI
+- Expand testing
+- Add threat intelligence integrations
+- Improve investigation workflows
+
+Please review **CONTRIBUTING.md** before opening a pull request.
+
+---
+
+# 🔒 Security
+
+If you discover a security issue within BLACKTERM itself, please report it responsibly.
+
+Please review **SECURITY.md** before publicly disclosing vulnerabilities.
+
+---
+
+# 📜 License
+
+BLACKTERM is released under the MIT License.
+
+See **LICENSE** for complete licensing information.
+
+---
+
+# 🙏 Acknowledgements
+
+BLACKTERM has been inspired by the broader cybersecurity and open-source communities.
+
+Special thanks to:
+
+- Python Community
+- OWASP
+- MITRE ATT&CK
+- TryHackMe
+- Open-source security researchers
+- Everyone who provides feedback and contributions
+
+---
+
+# ⭐ Support the Project
+
+If you find BLACKTERM useful:
+
+⭐ Star the repository
+
+🐛 Report issues
+
+💡 Suggest features
+
+🤝 Contribute improvements
+
+📢 Share the project with others
+
+Community feedback helps shape the future of BLACKTERM.
+
+---
+
+# 📈 Project Statistics
+
+> **Do not replace this section.**
+
+Keep your existing automated telemetry block (`BLACKTERM_STATS_START` / `BLACKTERM_STATS_END`) directly below this heading so it continues updating automatically.
+
+---
+
+<div align="center">
+
+## BLACKTERM
+
+### Autonomous Cyber Investigation Platform
+
+**One Investigation. One Platform.**
+
+Built with ❤️ for the cybersecurity community.
+
+*"Collect intelligence. Discover relationships. Build better investigations."*
+
+</div>
 ---
 ---
 ╔══════════════════════════════════════════════════════════════╗
