@@ -287,3 +287,39 @@ Current development is focused on expanding BLACKTERM into a complete cyber inve
   <img src="assets/project-stats.svg" alt="BLACKTERM live project statistics" />
 </p>
 <!-- BLACKTERM_STATS_END -->
+
+<!-- BLACKTERM_STATS_START -->
+## `blackterm> project --stats`
+
+```text
+╔══════════════════════════════════════════════════════════════╗
+║                 BLACKTERM PLATFORM v7.3.0                 ║
+╚══════════════════════════════════════════════════════════════╝
+
+ STATUS............... ONLINE
+ DEVELOPMENT.......... ACTIVE
+ SOURCE LINES......... 17,764
+ TOTAL TRACKED LINES.. 19,996
+ PYTHON LINES......... 19,240
+ TEST LINES........... 1,476
+ DOCUMENTATION LINES.. 636
+
+ PYTHON FILES......... 153
+ PROJECT FILES........ 167
+ MODULES.............. 88
+ DESKTOP PAGES........ 18
+ TESTS DISCOVERED..... 113
+ COMMITS.............. 21
+ CONTRIBUTORS......... 3
+
+ LANGUAGE TELEMETRY
+ Python: 19,240 • Markdown: 636 • YAML: 59 • TOML: 37 • JSON: 24
+
+ LAST REFRESH......... 2026-07-23T01:40:04+00:00
+ NEXT OBJECTIVE....... AUTONOMOUS OSINT ENGINE
+```
+
+<p align="center">
+  <img src="assets/project-stats.svg" alt="BLACKTERM live project statistics" />
+</p>
+<!-- BLACKTERM_STATS_END -->
