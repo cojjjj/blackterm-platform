@@ -25,6 +25,8 @@ NAV_ICONS = {
     "ATTACK SURFACE": "◈",
     "INVESTIGATION WORKSPACE": "•",
     "NETWORK MAP": "◉",
+    "GLOBAL INTELLIGENCE MAP": "◎",
+    "RELATIONSHIP GRAPH": "⌘",
     "OSINT": "⌖",
     "THREAT INTELLIGENCE": "◌",
     "TERMINAL": ">_",
@@ -74,6 +76,8 @@ NAV_SECTIONS: tuple[tuple[str, tuple[str, ...]], ...] = (
         "VISUALIZATION",
         (
             "NETWORK MAP",
+            "GLOBAL INTELLIGENCE MAP",
+            "RELATIONSHIP GRAPH",
         ),
     ),
     (
@@ -306,7 +310,7 @@ class Dock(QFrame):
         footer_line.setStyleSheet("color:#173a5a;")
         root.addWidget(footer_line)
 
-        footer = QLabel("v8.5 // PREMIUM ONLINE")
+        footer = QLabel("v7.3 // EXPLORER ONLINE")
         footer.setAlignment(Qt.AlignCenter)
         footer.setStyleSheet(
             "font-family:Consolas;font-size:9px;color:#36e6b0;font-weight:800;"

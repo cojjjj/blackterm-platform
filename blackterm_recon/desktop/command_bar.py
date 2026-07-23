@@ -12,7 +12,7 @@ class CommandBar(QFrame):
         prompt = QLabel("blackterm>")
         prompt.setStyleSheet("font-family: Consolas; color: #c000ff; font-weight: 900;")
         self.input = QLineEdit()
-        self.input.setPlaceholderText("open dashboard | open scan | open map | open assistant | history")
+        self.input.setPlaceholderText("open mission | open scan | open global | open threat | cases")
         self.input.returnPressed.connect(self.execute)
         self.execute_callback = execute_callback
         layout.addWidget(prompt)

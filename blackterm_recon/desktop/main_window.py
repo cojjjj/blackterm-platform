@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent
-from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
+from PySide6.QtCore import QEvent, QThread
+from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QMessageBox, QStackedWidget, QVBoxLayout, QWidget
 
 from .command_bar import CommandBar
 from .dock import Dock
@@ -13,6 +13,8 @@ from .pages.history import HistoryPage
 from .pages.mission_control import MissionControlPage
 from .operator_dashboard_page import OperatorDashboardPage
 from .pages.network import NetworkPage
+from .pages.global_map import GlobalIntelligenceMapPage
+from .pages.relationship_graph import RelationshipGraphPage
 from .pages.osint import OSINTPage
 from .pages.threat_intelligence import ThreatIntelligencePage
 from .pages.platform import PlatformPage
@@ -25,6 +27,8 @@ from .pages.settings import SettingsPage
 from .pages.terminal import TerminalPage
 from .theme import stylesheet
 from .autonomous import AutonomousInvestigation
+from .autonomous_worker import AutonomousWorkflowWorker
+from .investigation_wizard import InvestigationWizard
 from .event_bridge import QtEventBridge
 from .living_interface import BootOverlay, FadeController
 from .render_engine import RenderSurface
@@ -38,7 +42,9 @@ class MainWindow(QMainWindow):
         self.operator = operator
         self.event_bus = event_bus
         self.event_store = event_store
-        self.setWindowTitle("BLACKTERM RECON v5.7 // Interactive Attack Surface Graph")
+        self.workflow_thread = None
+        self.workflow_worker = None
+        self.setWindowTitle("BLACKTERM v7.3 // Investigation Explorer")
         self.resize(1540, 920)
         self.setMinimumSize(1160, 740)
         self.setMouseTracking(True)
@@ -67,6 +73,8 @@ class MainWindow(QMainWindow):
         self.investigation_workspace = InvestigationWorkspacePage(engine)
         self.autonomous = AutonomousInvestigation(engine, event_bus, self)
         self.network = NetworkPage(engine)
+        self.global_map = GlobalIntelligenceMapPage(engine)
+        self.relationship_graph = RelationshipGraphPage(engine)
         self.osint = OSINTPage(engine, event_bus)
         self.threat_intelligence = ThreatIntelligencePage(engine, event_bus)
         self.terminal = TerminalPage(engine, self.navigate_to_label)
@@ -88,6 +96,8 @@ class MainWindow(QMainWindow):
             ("ATTACK SURFACE", self.attack_surface),
             ("INVESTIGATION WORKSPACE", self.investigation_workspace),
             ("NETWORK MAP", self.network),
+            ("GLOBAL INTELLIGENCE MAP", self.global_map),
+            ("RELATIONSHIP GRAPH", self.relationship_graph),
             ("OSINT", self.osint),
             ("THREAT INTELLIGENCE", self.threat_intelligence),
             ("TERMINAL", self.terminal),
@@ -149,6 +159,9 @@ class MainWindow(QMainWindow):
         self.threat_intelligence.case_created.connect(self.cases.refresh)
         self.threat_intelligence.case_created.connect(self.open_case)
         self.operator_dashboard.open_case_requested.connect(self.open_case)
+        self.global_map.case_requested.connect(self.open_case)
+        self.relationship_graph.case_requested.connect(self.open_case)
+        self.relationship_graph.global_map_requested.connect(lambda: self.navigate_to_label("GLOBAL INTELLIGENCE MAP"))
         self.operator_dashboard.live_investigation_requested.connect(
             self.open_live_investigation
         )
@@ -169,9 +182,52 @@ class MainWindow(QMainWindow):
 
 
     def start_new_investigation(self):
-        self.navigate_to_label("CASES")
-        if hasattr(self.cases, "create_case"):
-            self.cases.create_case()
+        if self.workflow_thread is not None and self.workflow_thread.isRunning():
+            QMessageBox.information(self, "Investigation running", "An autonomous investigation is already active.")
+            return
+        wizard = InvestigationWizard(self)
+        if wizard.exec() != wizard.DialogCode.Accepted:
+            return
+        options = wizard.options()
+        self.navigate_to_label("MISSION CONTROL")
+        self.workflow_thread = QThread(self)
+        self.workflow_worker = AutonomousWorkflowWorker(
+            self.engine, self.event_bus, options
+        )
+        self.workflow_worker.moveToThread(self.workflow_thread)
+        self.workflow_thread.started.connect(self.workflow_worker.run)
+        self.workflow_worker.progress.connect(self.on_workflow_progress)
+        self.workflow_worker.completed.connect(self.on_workflow_complete)
+        self.workflow_worker.failed.connect(self.on_workflow_failed)
+        self.workflow_worker.finished.connect(self.workflow_thread.quit)
+        self.workflow_worker.finished.connect(self.workflow_worker.deleteLater)
+        self.workflow_thread.finished.connect(self.workflow_thread.deleteLater)
+        self.workflow_thread.finished.connect(self._clear_workflow)
+        self.workflow_thread.start()
+
+    def on_workflow_progress(self, stage, percent, message, metadata):
+        if hasattr(self.mission, "set_workflow_progress"):
+            self.mission.set_workflow_progress(stage, percent, message, metadata or {})
+
+    def on_workflow_complete(self, result):
+        self.cases.refresh()
+        self.mission.complete_workflow(result.target)
+        QMessageBox.information(
+            self,
+            "Investigation complete",
+            f"Case #{result.case_id} is ready for review."
+            + (f"\n\nReport: {result.report_path}" if result.report_path else ""),
+        )
+        self.open_case(result.case_id)
+
+    def on_workflow_failed(self, message):
+        if hasattr(self.mission, "fail_workflow"):
+            self.mission.fail_workflow(message)
+        QMessageBox.critical(self, "Autonomous investigation failed", message)
+
+    def _clear_workflow(self):
+        self.workflow_thread = None
+        self.workflow_worker = None
 
     def open_investigation_workspace(self, scan_id=None):
         self.navigate_to_label("INVESTIGATION WORKSPACE")
@@ -234,8 +290,12 @@ class MainWindow(QMainWindow):
                 "surface": "ATTACK SURFACE",
                 "investigation": "INVESTIGATION WORKSPACE",
                 "workspace": "INVESTIGATION WORKSPACE",
-                "graph": "INVESTIGATION WORKSPACE",
+                "graph": "RELATIONSHIP GRAPH",
+                "relationships": "RELATIONSHIP GRAPH",
+                "knowledge": "RELATIONSHIP GRAPH",
                 "map": "NETWORK MAP",
+                "global": "GLOBAL INTELLIGENCE MAP",
+                "world": "GLOBAL INTELLIGENCE MAP",
                 "osint": "OSINT",
                 "threat": "THREAT INTELLIGENCE",
                 "intel": "THREAT INTELLIGENCE",

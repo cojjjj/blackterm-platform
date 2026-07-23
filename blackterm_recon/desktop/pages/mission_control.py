@@ -67,10 +67,11 @@ class MissionControlPage(QWidget):
         self.current_target = ""
         self.operation_started_at = None
         self.operation_stage = "IDLE"
+        self.workflow_active = False
         try:
             self.platform_version = version("blackterm-recon")
         except PackageNotFoundError:
-            self.platform_version = "6.1.0"
+            self.platform_version = "6.2.0"
 
         root = QVBoxLayout(self)
         root.setContentsMargins(8, 8, 8, 8)
@@ -463,6 +464,41 @@ class MissionControlPage(QWidget):
                 f"{self.current_target or 'Operation'} — workflow complete"
             )
 
+
+    def set_workflow_progress(self, stage: str, percent: int, message: str, metadata: dict | None = None):
+        self.workflow_active = True
+        stage_map = {
+            "recon": "RECON",
+            "osint": "OSINT",
+            "threat": "THREAT INTEL",
+            "correlation": "AI CORRELATION",
+            "report": "REPORT",
+        }
+        label = stage_map.get(str(stage).lower())
+        metadata = metadata or {}
+        target = str(metadata.get("target") or self.current_target or "")
+        if label:
+            self._set_operation_stage(label, target)
+            self.operation_bars[label].setValue(max(0, min(100, int(percent))))
+        self._set_contextual_analyst(
+            "AUTONOMOUS WORKFLOW",
+            message,
+        )
+
+    def complete_workflow(self, target: str = ""):
+        self.workflow_active = False
+        self._set_operation_stage("COMPLETE", target)
+        self.operation_elapsed.setText("COMPLETE")
+        self._set_contextual_analyst(
+            "INVESTIGATION READY",
+            "The autonomous workflow completed and the case is ready for analyst review.",
+        )
+
+    def fail_workflow(self, message: str):
+        self.workflow_active = False
+        self.operation_elapsed.setText("REVIEW")
+        self._set_contextual_analyst("WORKFLOW REQUIRES REVIEW", message)
+
     def _set_contextual_analyst(self, state: str, detail: str):
         self.ai_state.setText(state)
         self.ai_detail.set_typed_text(detail)
@@ -498,10 +534,17 @@ class MissionControlPage(QWidget):
         elif "report" in title_lower or "report" in category_lower or "report" in module_lower:
             self._set_operation_stage("REPORT", target)
             self._set_contextual_analyst("GENERATING REPORT", event.message)
+        elif event.title == "Investigation Complete":
+            self.complete_workflow(target)
+        elif event.title == "Investigation Failed":
+            self.fail_workflow(event.message)
         elif event.title == "Scan Complete":
             self.running_scans = max(0, self.running_scans - 1)
-            self._set_operation_stage("COMPLETE", target)
-            self._set_contextual_analyst("SCAN REVIEW COMPLETE", event.message)
+            # A standalone scan is complete here. Autonomous workflows continue
+            # into OSINT, threat intelligence, correlation, and reporting.
+            if not self.workflow_active and metadata.get("workflow") != "autonomous":
+                self._set_operation_stage("COMPLETE", target)
+                self._set_contextual_analyst("SCAN REVIEW COMPLETE", event.message)
             if not self.running_scans:
                 self.scan_timer.stop()
                 self.state.setText("PLATFORM ONLINE")

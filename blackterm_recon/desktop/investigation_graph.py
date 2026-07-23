@@ -44,6 +44,8 @@ def _node_color(kind: str, risk: int) -> QColor:
         "TARGET": "#31e6b4",
         "DOMAIN": "#31e6b4",
         "IP": "#31e6b4",
+        "ORGANIZATION": "#a970ff",
+        "ASN": "#8b9cff",
         "SERVICE": "#f5d76e",
         "PORT": "#f5d76e",
         "DNS": "#58a6ff",
@@ -55,6 +57,10 @@ def _node_color(kind: str, risk: int) -> QColor:
         "FILE": "#cba6f7",
         "LOG": "#fab387",
         "OBSERVATION": "#bac2de",
+        "TECHNOLOGY": "#f5d76e",
+        "CERTIFICATE": "#74e0c2",
+        "OSINT": "#58a6ff",
+        "THREAT_INTELLIGENCE": "#ff79c6",
         "AI": "#ff79c6",
         "FINDING": "#ff79c6",
     }
@@ -70,8 +76,10 @@ class EdgeItem(QGraphicsPathItem):
         self.setZValue(-10)
         confidence = max(25, min(100, edge.confidence))
         color = QColor("#53657d")
-        color.setAlpha(80 + int(confidence * 1.2))
-        self.setPen(QPen(color, 1.2 + confidence / 100.0))
+        # Keep large relationship sets readable: strong links remain visible,
+        # while weaker links provide context without becoming a solid wall.
+        color.setAlpha(24 + int(confidence * 0.72))
+        self.setPen(QPen(color, 0.65 + confidence / 145.0))
         self.setToolTip(f"{edge.relationship} // confidence {edge.confidence}%")
         source.moved.connect(self.update_path)
         target.moved.connect(self.update_path)
@@ -81,24 +89,36 @@ class EdgeItem(QGraphicsPathItem):
         start = self.source.scenePos()
         end = self.target.scenePos()
         delta = end - start
-        curve = max(35.0, min(150.0, abs(delta.x()) * 0.24 + abs(delta.y()) * 0.12))
+        curve = max(28.0, min(190.0, abs(delta.x()) * 0.18 + abs(delta.y()) * 0.10))
+        # Deterministic lane offset approximates edge bundling by routing links
+        # with the same relationship through similar visual lanes.
+        lane = (sum(ord(ch) for ch in self.edge.relationship) % 9 - 4) * 9.0
+        midpoint = QPointF((start.x() + end.x()) / 2, (start.y() + end.y()) / 2 + lane)
         path = QPainterPath(start)
-        path.cubicTo(
-            QPointF(start.x() + curve, start.y()),
-            QPointF(end.x() - curve, end.y()),
-            end,
-        )
+        path.quadTo(midpoint, end)
         self.setPath(path)
 
 
 class NodeItem(QGraphicsObject):
     selected_node = Signal(object)
+    activated_node = Signal(object)
     moved = Signal()
 
     def __init__(self, node: GraphNode):
         super().__init__()
         self.node = node
-        self.radius = 43.0 if node.kind == "CASE" else 34.0
+        radii = {
+            "CASE": 48.0,
+            "TARGET": 40.0,
+            "DOMAIN": 40.0,
+            "IP": 38.0,
+            "ORGANIZATION": 37.0,
+            "ASN": 35.0,
+            "THREAT_INTELLIGENCE": 35.0,
+            "CERTIFICATE": 31.0,
+            "TECHNOLOGY": 29.0,
+        }
+        self.radius = radii.get(node.kind.upper(), 30.0)
         self.setPos(node.x, node.y)
         self.setFlags(
             QGraphicsItem.ItemIsMovable
@@ -188,6 +208,10 @@ class NodeItem(QGraphicsObject):
         self.selected_node.emit(self.node)
         super().mousePressEvent(event)
 
+    def mouseDoubleClickEvent(self, event):
+        self.activated_node.emit(self.node)
+        event.accept()
+
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionHasChanged:
             self.moved.emit()
@@ -223,6 +247,12 @@ class InvestigationGraph(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.snapshot = GraphSnapshot((), ())
+        self._report = None
+        self._layout_mode = "explore"
+        self._edge_threshold = 85
+        self._focused_node_id: str | None = None
+        self._expanded_node_ids: set[str] = set()
+        self._selected_node_id: str | None = None
         self.scene = QGraphicsScene(self)
         self.scene.setItemIndexMethod(QGraphicsScene.NoIndex)
         self.view = GraphView(self.scene, self)
@@ -252,6 +282,10 @@ class InvestigationGraph(QWidget):
         toolbar.addWidget(reset_button)
         toolbar.addWidget(export_button)
         root.addLayout(toolbar)
+        self.breadcrumb = QLabel("EXPLORER // CASES")
+        self.breadcrumb.setObjectName("graphBreadcrumb")
+        self.breadcrumb.setWordWrap(True)
+        root.addWidget(self.breadcrumb)
         root.addWidget(self.view, 1)
 
         self.detail = QLabel(
@@ -276,12 +310,95 @@ class InvestigationGraph(QWidget):
         )
 
     def set_report(self, report):
-        self.snapshot = build_graph_snapshot(report.nodes, report.edges)
+        self._report = report
+        self._focused_node_id = None
+        self._selected_node_id = None
+        self._expanded_node_ids = set()
+        self._rebuild_snapshot()
+
+    def _rebuild_snapshot(self):
+        if self._report is None:
+            self.snapshot = GraphSnapshot((), ())
+            self.render_snapshot(self.snapshot)
+            return
+        all_nodes = list(self._report.nodes)
+        all_edges = [edge for edge in self._report.edges if int(getattr(edge, "confidence", 0) or 0) >= self._edge_threshold]
+        nodes = all_nodes
+        edges = all_edges
+
+        if self._layout_mode == "explore" and not self._focused_node_id:
+            visible = {
+                str(node.node_id) for node in all_nodes
+                if str(getattr(node, "kind", "")).upper() == "CASE"
+            }
+            visible.update(self._expanded_node_ids)
+            for edge in all_edges:
+                if edge.source in self._expanded_node_ids:
+                    visible.add(edge.target)
+                if edge.target in self._expanded_node_ids:
+                    visible.add(edge.source)
+            nodes = [node for node in all_nodes if node.node_id in visible]
+            edges = [edge for edge in all_edges if edge.source in visible and edge.target in visible]
+
+        if self._focused_node_id:
+            keep = {self._focused_node_id}
+            for edge in edges:
+                if edge.source == self._focused_node_id:
+                    keep.add(edge.target)
+                elif edge.target == self._focused_node_id:
+                    keep.add(edge.source)
+            nodes = [node for node in nodes if node.node_id in keep]
+            edges = [edge for edge in edges if edge.source in keep and edge.target in keep]
+        self.snapshot = build_graph_snapshot(nodes, edges, layout=self._layout_mode)
         self.render_snapshot(self.snapshot)
         self.status.setText(
-            f"GRAPH // {len(self.snapshot.nodes)} NODES // "
-            f"{len(self.snapshot.edges)} LINKS // {report.level} PRIORITY"
+            f"GRAPH // {len(self.snapshot.nodes)} NODES // {len(self.snapshot.edges)} LINKS // "
+            f"{self._layout_mode.upper()} // MIN {self._edge_threshold}%"
         )
+
+    def auto_layout(self):
+        """Choose a readable layout for the current graph size and focus state."""
+        if self._focused_node_id:
+            mode = "tree"
+        elif self._report is not None and len(self._report.nodes) >= 80:
+            mode = "explore"
+        else:
+            mode = "network"
+        self._layout_mode = mode
+        self._rebuild_snapshot()
+        return mode
+
+    def set_layout_mode(self, mode: str):
+        mode = (mode or "network").lower()
+        if mode not in {"explore", "network", "cluster", "tree"}:
+            mode = "explore"
+        self._layout_mode = mode
+        self._rebuild_snapshot()
+
+    def set_edge_threshold(self, threshold: int):
+        self._edge_threshold = max(0, min(100, int(threshold)))
+        self._rebuild_snapshot()
+
+    def focus_node(self, node_id: str | None):
+        self._focused_node_id = node_id or None
+        self._rebuild_snapshot()
+
+    def clear_focus(self):
+        self.focus_node(None)
+
+    def highlight(self, query: str):
+        needle = (query or "").strip().lower()
+        for item in self.node_items.values():
+            matched = not needle or needle in item.node.label.lower() or needle in item.node.kind.lower() or needle in item.node.detail.lower()
+            item.setOpacity(1.0 if matched else 0.16)
+            item.setZValue(30 if matched and needle else 10)
+        if needle:
+            matches = [item for item in self.node_items.values() if item.opacity() >= 0.99]
+            if matches:
+                rect = matches[0].sceneBoundingRect()
+                for item in matches[1:]:
+                    rect = rect.united(item.sceneBoundingRect())
+                self.view.fitInView(rect.adjusted(-120, -120, 120, 120), Qt.KeepAspectRatio)
 
     def set_report_live(self, report, *, interval_ms: int = 180):
         """Reveal graph nodes one by one while preserving the final stable layout."""
@@ -320,6 +437,7 @@ class InvestigationGraph(QWidget):
         item.setOpacity(0.0)
         item.setScale(0.15)
         item.selected_node.connect(self._show_node)
+        item.activated_node.connect(self.toggle_expansion)
         self.scene.addItem(item)
         self.node_items[node.node_id] = item
 
@@ -371,6 +489,7 @@ class InvestigationGraph(QWidget):
         for node in snapshot.nodes:
             item = NodeItem(node)
             item.selected_node.connect(self._show_node)
+            item.activated_node.connect(self.toggle_expansion)
             self.scene.addItem(item)
             self.node_items[node.node_id] = item
 
@@ -387,13 +506,55 @@ class InvestigationGraph(QWidget):
         self.scene.setSceneRect(bounds)
         self.fit_graph()
 
+    def toggle_expansion(self, node: GraphNode):
+        """Expand or collapse one node in case-first explorer mode."""
+        if self._layout_mode != "explore":
+            self._layout_mode = "explore"
+        node_id = str(node.node_id)
+        if node_id in self._expanded_node_ids and str(node.kind).upper() != "CASE":
+            self._expanded_node_ids.remove(node_id)
+            action = "COLLAPSED"
+        elif node_id in self._expanded_node_ids and str(node.kind).upper() == "CASE":
+            # Case roots remain visible but can collapse their surrounding context.
+            self._expanded_node_ids.remove(node_id)
+            action = "COLLAPSED"
+        else:
+            self._expanded_node_ids.add(node_id)
+            action = "EXPANDED"
+        self._selected_node_id = node_id
+        self._rebuild_snapshot()
+        self.breadcrumb.setText(f"EXPLORER // {action} // {node.kind} // {node.label}")
+
+    def linked_case_id(self, node_id: str | None) -> int | None:
+        if not node_id or self._report is None:
+            return None
+        if node_id.startswith("case:"):
+            try:
+                return int(node_id.split(":", 1)[1])
+            except ValueError:
+                return None
+        for edge in self._report.edges:
+            other = None
+            if edge.source == node_id and str(edge.target).startswith("case:"):
+                other = edge.target
+            elif edge.target == node_id and str(edge.source).startswith("case:"):
+                other = edge.source
+            if other:
+                try:
+                    return int(str(other).split(":", 1)[1])
+                except ValueError:
+                    continue
+        return None
+
     def _show_node(self, node: GraphNode):
+        self._selected_node_id = node.node_id
         risk_label = "HIGH SIGNAL" if node.risk >= 18 else "WATCH" if node.risk >= 10 else "CONTEXT"
         detail = node.detail or "No additional detail recorded."
         self.detail.setText(
             f"{node.kind} // {node.label}    "
             f"RISK // {node.risk} ({risk_label})\n{detail}"
         )
+        self.breadcrumb.setText(f"EXPLORER // {node.kind} // {node.label} // DOUBLE-CLICK TO EXPAND")
         self.node_selected.emit(node)
 
     def fit_graph(self):
@@ -404,13 +565,7 @@ class InvestigationGraph(QWidget):
             )
 
     def reset_layout(self):
-        if not self.snapshot.nodes:
-            return
-        for node in self.snapshot.nodes:
-            item = self.node_items.get(node.node_id)
-            if item:
-                item.setPos(node.x, node.y)
-        self.fit_graph()
+        self._rebuild_snapshot()
 
     def export_png(self):
         if not self.scene.items():
