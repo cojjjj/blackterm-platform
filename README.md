@@ -19,6 +19,15 @@ Reconnaissance • Attack Surface Intelligence • OSINT • Threat Intelligence
 
 </div>
 
+
+## 📚 Documentation
+
+| Guide | Description |
+|-------|-------------|
+| 📸 [Screenshots](docs/SCREENSHOTS.md) | Complete tour of the BLACKTERM interface |
+| 🏗️ [Architecture](docs/ARCHITECTURE.md) | Platform architecture and investigation pipeline |
+| 🧠 [AI Engine](docs/AI.md) | AI investigation workflow |
+| 🛣️ [Roadmap](docs/ROADMAP.md) | Upcoming features and milestones |
 ---
 
 # 🚀 Overview
