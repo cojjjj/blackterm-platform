@@ -8,12 +8,14 @@
 
 Reconnaissance • Attack Surface Intelligence • OSINT • Threat Intelligence • AI Investigation
 
-<p>
-  <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=for-the-badge">
-  <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white">
-  <img src="https://img.shields.io/badge/License-MIT-success?style=for-the-badge">
-  <img src="https://img.shields.io/badge/Status-Active%20Development-purple?style=for-the-badge">
-</p>
+<div align="center">
+
+[📸 Interface Gallery](SCREENSHOTS.md) •
+[🏗 Architecture](assets/architecture.svg) •
+[🛣 Roadmap](ROADMAP.md) •
+[🔒 Security](SECURITY.md)
+
+</div>
 
 *"One investigation. One platform."*
 
