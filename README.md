@@ -3,7 +3,6 @@
 </div>
 <div align="center">
 
-# BLACKTERM
 
 ### Autonomous Cyber Investigation Platform
 
