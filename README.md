@@ -205,34 +205,54 @@ Understand how evidence connects through an interactive graph of:
 Automatically summarize findings, identify patterns, and assist analysts with investigation reporting.
 
 ---
+# 🚀 Quick Start (Windows)
 
-# 🚀 Quick Start
-
-Clone the repository:
+## 1. Clone the repository
 
 ```bash
 git clone https://github.com/cojjjj/blackterm-platform.git
-```
-
-Navigate into the project:
-
-```bash
 cd blackterm-platform
 ```
 
-Install dependencies:
+## 2. Create a virtual environment
 
 ```bash
-pip install -r requirements.txt
+python -m venv .venv
 ```
 
-Launch BLACKTERM:
+## 3. Activate it
+
+**Command Prompt**
+
+```cmd
+.venv\Scripts\activate
+```
+
+**PowerShell**
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+## 4. Install BLACKTERM
 
 ```bash
-python main.py
+pip install -e .
 ```
 
----
+*(or `pip install -r requirements.txt` if you aren't using `pyproject.toml`)*
+
+## 5. Launch BLACKTERM
+
+```bash
+python -m blackterm_recon
+```
+
+or
+
+```cmd
+RUN_BLACKTERM.bat
+```
 
 # 📌 Project Goals
 
