@@ -291,7 +291,7 @@ Current development is focused on expanding BLACKTERM into a complete cyber inve
 
 > **⚠️ Responsible Use**
 >
-> BLACKTERM is intended for defensive security research, education, and authorized security assessments only. Always obtain permission before scanning or investigating systems that you do not own or explicitly have authorization to test.
+> BLACKTERM is intended for defensive security research, education, and authorized security assessments. Only use BLACKTERM on systems you own or on systems for which you have explicit permission to test. Users are responsible for ensuring their activities comply with applicable laws, regulations, and organizational policies.
 ---
 
 # 🏗 Platform Architecture
