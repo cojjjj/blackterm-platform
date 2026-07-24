@@ -35,7 +35,9 @@ DEFAULT_ACTIONS = (
     CommandAction("open threat", "Threat Intelligence", "Enrich indicators with defensive intelligence", "ioc intel"),
     CommandAction("open osint", "OSINT", "Collect authorized open-source intelligence", "recon"),
     CommandAction("open reports", "Reports", "Generate and review professional reports", "export pdf"),
-    CommandAction("open assistant", "BLACKTERM AI", "Summarize findings and suggest next steps", "copilot ai"),
+    CommandAction("ai", "Global AI Analyst", "Open the context-aware analyst dock", "copilot assistant ask"),
+    CommandAction("notifications", "Notification Center", "Review platform and intelligence events", "alerts events bell"),
+    CommandAction("open assistant", "BLACKTERM AI Page", "Open the full assistant workspace", "copilot ai"),
     CommandAction("open plugins", "Plugins", "Manage installed platform extensions", "marketplace modules"),
     CommandAction("open settings", "Settings", "Configure BLACKTERM", "preferences theme"),
 )
@@ -120,6 +122,8 @@ class CommandPalette(QDialog):
 
 class CommandBar(QFrame):
     palette_requested = Signal()
+    ai_requested = Signal()
+    notifications_requested = Signal()
 
     def __init__(self, execute_callback, parent=None):
         super().__init__(parent)
@@ -142,7 +146,19 @@ class CommandBar(QFrame):
         shortcut.mousePressEvent = lambda _event: self.palette_requested.emit()
 
         layout.addWidget(prompt)
+        ai = QLabel("✦ AI ANALYST")
+        ai.setObjectName("shortcutBadge")
+        ai.setToolTip("Open the global AI analyst")
+        ai.mousePressEvent = lambda _event: self.ai_requested.emit()
+
+        bell = QLabel("● ALERTS")
+        bell.setObjectName("shortcutBadge")
+        bell.setToolTip("Open notification center")
+        bell.mousePressEvent = lambda _event: self.notifications_requested.emit()
+
         layout.addWidget(self.input, 1)
+        layout.addWidget(ai)
+        layout.addWidget(bell)
         layout.addWidget(shortcut)
 
     def execute(self):

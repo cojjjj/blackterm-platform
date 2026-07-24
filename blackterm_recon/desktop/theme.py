@@ -1,8 +1,8 @@
 THEMES = {
     "Purple Void": {
-        "bg": "#07050b", "panel": "#100b17", "panel2": "#171020",
-        "accent": "#c000ff", "accent2": "#7f3cff", "text": "#f5efff",
-        "muted": "#9b8aa8", "border": "#372342", "good": "#35df83",
+        "bg": "#050713", "panel": "#090d1b", "panel2": "#131a31",
+        "accent": "#c000ff", "accent2": "#842be2", "text": "#f4f1ff",
+        "muted": "#8994ad", "border": "#2d2850", "good": "#00ef9b",
         "bad": "#ff5c7a", "warn": "#ffc857",
     },
     "Green Matrix": {
@@ -44,7 +44,7 @@ def stylesheet(name: str) -> str:
     QWidget {{
         background: transparent;
         color: {t['text']};
-        font-family: 'Segoe UI';
+        font-family: 'Segoe UI Variable', 'Segoe UI';
         font-size: 13px;
     }}
     QMainWindow, QWidget#rootWindow, QStackedWidget {{
@@ -53,7 +53,7 @@ def stylesheet(name: str) -> str:
     QFrame#sidebar, QFrame#panel, QFrame#glassPanel, QFrame#metricCard, QGroupBox {{
         background-color: rgba(16, 11, 23, 232);
         border: 1px solid {t['border']};
-        border-radius: 12px;
+        border-radius: 10px;
     }}
     QFrame#metricCard:hover {{
         border: 1px solid {t['accent']};
@@ -180,3 +180,53 @@ def stylesheet(name: str) -> str:
         min-height: 30px;
     }}
     """
+
+
+# BLACKTERM v10.8 identity layer
+IDENTITY_QSS = """
+QToolTip { background:#131a31; color:#f4f1ff; border:1px solid #6c32a0; padding:6px; }
+QTabWidget::pane { border:1px solid #2d2850; border-radius:9px; background:#090d1b; }
+QTabBar::tab { background:#090d1b; color:#8994ad; padding:10px 16px; border:1px solid #2d2850; }
+QTabBar::tab:selected { color:#f4f1ff; border-color:#a82be2; background:#17112a; }
+QMenu { background:#090d1b; border:1px solid #2d2850; padding:6px; }
+QMenu::item:selected { background:#842be2; color:white; }
+"""
+
+_original_stylesheet = stylesheet
+def stylesheet(name: str) -> str:
+    return _original_stylesheet(name) + IDENTITY_QSS + V11_WORKSPACE_QSS
+
+# BLACKTERM X v11.0 global workspace surfaces
+V11_WORKSPACE_QSS = r"""
+QFrame#aiAnalystDock, QFrame#notificationCenter {
+    background: rgba(7, 8, 18, 246);
+    border: 1px solid #7b2bc5;
+    border-radius: 13px;
+}
+QLabel#aiDockTitle, QLabel#notificationTitle {
+    color: #d6a6ff;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+QLabel#aiDockStatus { color: #36e6b0; font-size: 10px; font-weight: 900; }
+QTextBrowser#aiDockChat, QListWidget#notificationList {
+    background: #070a13;
+    border: 1px solid #242747;
+    border-radius: 10px;
+    color: #edf4ff;
+    padding: 8px;
+}
+QPushButton#aiQuickAction {
+    background: #10152a; color: #c9a4ff; border: 1px solid #563181;
+    border-radius: 7px; padding: 7px; font-size: 9px; font-weight: 800;
+}
+QPushButton#aiQuickAction:hover { background: #27113f; border-color: #b12cff; }
+QFrame#liveStatusBar {
+    background: rgba(5, 9, 20, 225);
+    border: 1px solid #1c4566;
+    border-radius: 9px;
+}
+QLabel#liveStatusItem { color: #35dfb1; font-size: 9px; font-weight: 800; letter-spacing: .5px; }
+QLabel#liveStatusClock { color: #9aaac0; font-family: Consolas; font-size: 9px; }
+"""

@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
 )
 
 from .living_interface import PulseController
+from PySide6.QtSvgWidgets import QSvgWidget
+from .branding import LOGO_PATH
 
 
 NAV_ICONS = {
@@ -29,6 +31,7 @@ NAV_ICONS = {
     "RELATIONSHIP GRAPH": "⌘",
     "OSINT": "⌖",
     "THREAT INTELLIGENCE": "◌",
+    "VULNERABILITY INTELLIGENCE": "◫",
     "TERMINAL": ">_",
     "CASES": "▣",
     "EVENT FEED": "≡",
@@ -70,6 +73,7 @@ NAV_SECTIONS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "ATTACK SURFACE",
             "OSINT",
             "THREAT INTELLIGENCE",
+            "VULNERABILITY INTELLIGENCE",
         ),
     ),
     (
@@ -115,15 +119,15 @@ class DockButton(QPushButton):
                 font-weight: 750;
             }
             QPushButton#navigationButton:hover {
-                background: #122941;
-                border-color: #2b5f8b;
+                background: #15152b;
+                border-color: #5a2d80;
                 color: #ffffff;
             }
             QPushButton#navigationButton:checked {
                 background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-                    stop:0 #31b7ff, stop:0.55 #39c7f4, stop:1 #36e6b0);
-                border-color: #46c9ff;
-                color: #06111d;
+                    stop:0 #c000ff, stop:0.55 #9b36ef, stop:1 #00e5ff);
+                border-color: #b64cff;
+                color: #050713;
             }
             """
         )
@@ -161,7 +165,7 @@ class SectionHeader(QPushButton):
                 background: rgba(18, 41, 65, 120);
             }
             QPushButton#navigationSectionHeader:checked {
-                color: #31b7ff;
+                color: #c000ff;
             }
             """
         )
@@ -219,8 +223,8 @@ class Dock(QFrame):
         self.setStyleSheet(
             """
             QFrame#navigationDock {
-                background: #080d17;
-                border: 1px solid #173a5a;
+                background: #070913;
+                border: 1px solid #2d2850;
                 border-radius: 12px;
             }
             QWidget#navigationSectionContent {
@@ -233,6 +237,10 @@ class Dock(QFrame):
         root.setContentsMargins(10, 12, 10, 12)
         root.setSpacing(8)
 
+        logo = QSvgWidget(str(LOGO_PATH))
+        logo.setFixedSize(82, 82)
+        root.addWidget(logo, 0, Qt.AlignCenter)
+
         brand = QLabel("BLACKTERM")
         brand.setAlignment(Qt.AlignCenter)
         brand.setStyleSheet(
@@ -241,14 +249,14 @@ class Dock(QFrame):
         mode = QLabel("INTELLIGENCE PLATFORM")
         mode.setAlignment(Qt.AlignCenter)
         mode.setStyleSheet(
-            "font-size:8px;font-weight:800;color:#31b7ff;letter-spacing:1.4px;"
+            "font-size:8px;font-weight:800;color:#b64cff;letter-spacing:1.4px;"
         )
         root.addWidget(brand)
         root.addWidget(mode)
 
         divider = QFrame()
         divider.setFrameShape(QFrame.HLine)
-        divider.setStyleSheet("color:#173a5a;")
+        divider.setStyleSheet("color:#2d2850;")
         root.addWidget(divider)
 
         scroll = QScrollArea()
@@ -307,13 +315,13 @@ class Dock(QFrame):
 
         footer_line = QFrame()
         footer_line.setFrameShape(QFrame.HLine)
-        footer_line.setStyleSheet("color:#173a5a;")
+        footer_line.setStyleSheet("color:#2d2850;")
         root.addWidget(footer_line)
 
-        footer = QLabel("BLACKTERM X // v10.0 ONLINE")
+        footer = QLabel("BLACKTERM X // v11.0 ONLINE")
         footer.setAlignment(Qt.AlignCenter)
         footer.setStyleSheet(
-            "font-family:Consolas;font-size:9px;color:#36e6b0;font-weight:800;"
+            "font-family:Consolas;font-size:9px;color:#00e5ff;font-weight:800;"
         )
         root.addWidget(footer)
 

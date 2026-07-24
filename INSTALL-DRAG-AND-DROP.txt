@@ -1,0 +1,9 @@
+BLACKTERM X v11.0 // MISSION CONTROL
+
+1. Close BLACKTERM completely.
+2. Copy the blackterm_recon folder from this update.
+3. Paste it into your BLACKTERM-RECON-DESKTOP-ALPHA project folder.
+4. Choose Replace the files in the destination.
+5. Start BLACKTERM with RUN_BLACKTERM.bat.
+
+This update expects BLACKTERM Visual Identity v10.8 to already be installed.

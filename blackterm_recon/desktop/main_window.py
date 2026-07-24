@@ -17,6 +17,7 @@ from .pages.global_map import GlobalIntelligenceMapPage
 from .pages.relationship_graph import RelationshipGraphPage
 from .pages.osint import OSINTPage
 from .pages.threat_intelligence import ThreatIntelligencePage
+from .pages.cve_atlas import CVEAtlasPage
 from .pages.platform import PlatformPage
 from .pages.plugins import PluginsPage
 from .pages.reports import ReportsPage
@@ -34,6 +35,10 @@ from .living_interface import BootOverlay, FadeController
 from .render_engine import RenderSurface
 from .premium_style import premium_stylesheet
 from .workspace_header import WorkspaceHeader
+from .branding import SoundIdentity, app_icon
+from .ai_dock import AIAnalystDock
+from .live_status import LiveStatusBar
+from .notification_center import NotificationCenter
 
 
 class MainWindow(QMainWindow):
@@ -45,7 +50,9 @@ class MainWindow(QMainWindow):
         self.event_store = event_store
         self.workflow_thread = None
         self.workflow_worker = None
-        self.setWindowTitle("BLACKTERM X v10.0 // Investigation OS")
+        self.setWindowTitle("BLACKTERM X v11.0 // Mission Control")
+        self.setWindowIcon(app_icon())
+        self.sound_identity = SoundIdentity(self)
         self.resize(1540, 920)
         self.setMinimumSize(1160, 740)
         self.setMouseTracking(True)
@@ -78,6 +85,7 @@ class MainWindow(QMainWindow):
         self.relationship_graph = RelationshipGraphPage(engine)
         self.osint = OSINTPage(engine, event_bus)
         self.threat_intelligence = ThreatIntelligencePage(engine, event_bus)
+        self.cve_atlas = CVEAtlasPage(engine, event_bus)
         self.terminal = TerminalPage(engine, self.navigate_to_label)
         self.cases = CasesPage(engine, event_bus)
         self.events = EventFeedPage(event_bus, event_store)
@@ -101,6 +109,7 @@ class MainWindow(QMainWindow):
             ("RELATIONSHIP GRAPH", self.relationship_graph),
             ("OSINT", self.osint),
             ("THREAT INTELLIGENCE", self.threat_intelligence),
+            ("VULNERABILITY INTELLIGENCE", self.cve_atlas),
             ("TERMINAL", self.terminal),
             ("CASES", self.cases),
             ("EVENT FEED", self.events),
@@ -131,9 +140,29 @@ class MainWindow(QMainWindow):
         self.workspace_header.new_investigation_requested.connect(self.start_new_investigation)
         self.workspace_header.command_palette_requested.connect(self.open_command_palette)
         content_layout.addWidget(self.workspace_header)
-        content_layout.addWidget(self.stack, 1)
+
+        self.workspace_row = QHBoxLayout()
+        self.workspace_row.setContentsMargins(0, 0, 0, 0)
+        self.workspace_row.setSpacing(10)
+        self.workspace_row.addWidget(self.stack, 1)
+
+        self.ai_dock = AIAnalystDock(engine, self)
+        self.ai_dock.close_requested.connect(self.toggle_ai_dock)
+        self.ai_dock.hide()
+        self.workspace_row.addWidget(self.ai_dock)
+
+        self.notification_center = NotificationCenter(event_store, self)
+        self.notification_center.close_requested.connect(self.toggle_notifications)
+        self.notification_center.hide()
+        self.workspace_row.addWidget(self.notification_center)
+
+        content_layout.addLayout(self.workspace_row, 1)
+        self.live_status = LiveStatusBar(engine, self)
+        content_layout.addWidget(self.live_status)
         self.command_bar = CommandBar(self.execute_command, self)
         self.command_bar.palette_requested.connect(self.open_command_palette)
+        self.command_bar.ai_requested.connect(self.toggle_ai_dock)
+        self.command_bar.notifications_requested.connect(self.toggle_notifications)
         self.palette_shortcut = self.command_bar.install_palette_shortcut(self)
         self.command_palette = CommandPalette(parent=self)
         self.command_palette.command_selected.connect(self.execute_command)
@@ -189,6 +218,22 @@ class MainWindow(QMainWindow):
         self.apply_theme(engine.config.theme)
         root_widget.installEventFilter(self)
 
+
+    def toggle_ai_dock(self):
+        visible = self.ai_dock.isVisible()
+        self.notification_center.hide()
+        self.ai_dock.setVisible(not visible)
+        if not visible:
+            self.ai_dock.input.setFocus()
+            self.sound_identity.play("navigate")
+
+    def toggle_notifications(self):
+        visible = self.notification_center.isVisible()
+        self.ai_dock.hide()
+        self.notification_center.setVisible(not visible)
+        if not visible:
+            self.notification_center.refresh()
+            self.sound_identity.play("navigate")
 
     def open_command_palette(self):
         self.command_palette.show()
@@ -291,6 +336,14 @@ class MainWindow(QMainWindow):
         parts = command.strip().lower().split()
         if not parts:
             return
+        if parts[0] in {"ai", "ask", "analyst"}:
+            self.toggle_ai_dock()
+            if len(parts) > 1:
+                self.ai_dock.ask_text(" ".join(parts[1:]))
+            return
+        if parts[0] in {"notifications", "alerts"}:
+            self.toggle_notifications()
+            return
         if parts[0] == "open" and len(parts) > 1:
             mapping = {
                 "mission": "MISSION CONTROL",
@@ -313,6 +366,9 @@ class MainWindow(QMainWindow):
                 "osint": "OSINT",
                 "threat": "THREAT INTELLIGENCE",
                 "intel": "THREAT INTELLIGENCE",
+                "vulnerability": "VULNERABILITY INTELLIGENCE",
+                "vuln": "VULNERABILITY INTELLIGENCE",
+                "cve": "VULNERABILITY INTELLIGENCE",
                 "terminal": "TERMINAL",
                 "cases": "CASES",
                 "events": "EVENT FEED",
@@ -327,6 +383,21 @@ class MainWindow(QMainWindow):
             if label:
                 self.navigate_to_label(label)
                 return
+        if parts[0] in {"investigate", "explain"} and len(parts) > 1 and parts[1].upper().startswith("CVE-"):
+            self.navigate_to_label("VULNERABILITY INTELLIGENCE")
+            if parts[0] == "explain":
+                self.cve_atlas.command_explain(parts[1].upper())
+            else:
+                self.cve_atlas.command_lookup(parts[1].upper())
+            return
+        if parts[0] == "show" and len(parts) > 1 and parts[1] == "mitre":
+            self.navigate_to_label("VULNERABILITY INTELLIGENCE")
+            self.cve_atlas.command_show_mitre()
+            return
+        if parts[0] == "export" and len(parts) > 1 and parts[1] in {"cve", "report", "html"}:
+            self.navigate_to_label("VULNERABILITY INTELLIGENCE")
+            self.cve_atlas.command_export()
+            return
         if parts[0] in {"operator", "home"}:
             self.navigate_to_label("OPERATOR DASHBOARD")
         elif parts[0] == "osint":
@@ -350,6 +421,7 @@ class MainWindow(QMainWindow):
 
     def show_page(self, index):
         self.stack.setCurrentIndex(index)
+        self.sound_identity.play("navigate")
         if hasattr(self, "workspace_header"):
             self.workspace_header.set_page(self.pages[index][0])
         page = self.pages[index][1]

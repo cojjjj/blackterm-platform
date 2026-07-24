@@ -8,6 +8,7 @@ from ..events import EventBus, EventStore
 from ..logging_setup import configure_logging
 from .main_window import MainWindow
 from .startup import StartupSequence
+from .branding import app_icon
 
 
 def main() -> int:
@@ -19,6 +20,8 @@ def main() -> int:
 
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("BLACKTERM")
+    app.setOrganizationName("BLACKTERM")
+    app.setWindowIcon(app_icon())
 
     operator = {"name": "OPERATOR"}
     startup = StartupSequence()
