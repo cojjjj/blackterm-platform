@@ -1,5 +1,13 @@
 # Changelog
 
+## 9.0.0
+
+- Added a persistent intelligence-platform workspace header.
+- Added a searchable Ctrl+K command palette.
+- Added global New Investigation and command actions.
+- Improved desktop navigation density and v9 platform branding.
+- Preserved compatibility with the existing engine, cases, graphs, reports, and intelligence modules.
+
 ## 5.6.0 — Attack Surface Analyst Experience
 
 - Added a glowing, color-coded risk badge.

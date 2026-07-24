@@ -214,8 +214,8 @@ class Dock(QFrame):
         self.label_to_section: dict[str, str] = {}
         self._active_pulse = None
         self.setObjectName("navigationDock")
-        self.setMinimumWidth(228)
-        self.setMaximumWidth(265)
+        self.setMinimumWidth(220)
+        self.setMaximumWidth(248)
         self.setStyleSheet(
             """
             QFrame#navigationDock {
@@ -310,7 +310,7 @@ class Dock(QFrame):
         footer_line.setStyleSheet("color:#173a5a;")
         root.addWidget(footer_line)
 
-        footer = QLabel("v7.3 // EXPLORER ONLINE")
+        footer = QLabel("BLACKTERM X // v10.0 ONLINE")
         footer.setAlignment(Qt.AlignCenter)
         footer.setStyleSheet(
             "font-family:Consolas;font-size:9px;color:#36e6b0;font-weight:800;"
@@ -368,8 +368,8 @@ class Dock(QFrame):
 
     def set_compact(self, compact: bool):
         """Optional compatibility helper; labels remain visible by design."""
-        self.setMinimumWidth(228)
-        self.setMaximumWidth(265)
+        self.setMinimumWidth(220)
+        self.setMaximumWidth(248)
 
 
 # v8.2.1+ compatibility alias.

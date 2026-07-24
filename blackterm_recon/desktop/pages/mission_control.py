@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from ...events import EventLevel
 from ..widgets import MetricCard, PulseDot, Sparkline, ThreatMeter, TypingLabel
+from ..system_telemetry import SystemTelemetryPanel
 
 
 LEVEL_COLORS = {
@@ -71,7 +72,7 @@ class MissionControlPage(QWidget):
         try:
             self.platform_version = version("blackterm-recon")
         except PackageNotFoundError:
-            self.platform_version = "6.2.0"
+            self.platform_version = "9.1.0"
 
         root = QVBoxLayout(self)
         root.setContentsMargins(8, 8, 8, 8)
@@ -204,6 +205,8 @@ class MissionControlPage(QWidget):
         status_layout.addWidget(self.load)
         self.threat_meter = ThreatMeter()
         status_layout.addWidget(self.threat_meter)
+        self.system_telemetry = SystemTelemetryPanel()
+        status_layout.addWidget(self.system_telemetry)
         status_layout.addStretch()
 
         analyst_panel = QFrame()

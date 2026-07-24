@@ -2,14 +2,18 @@ from __future__ import annotations
 
 from html import escape
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
+    QListWidget,
+    QProgressBar,
     QPushButton,
     QSplitter,
+    QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -82,6 +86,50 @@ class InvestigationWorkspacePage(QWidget):
         status_row.addWidget(self.graph_status)
         root.addLayout(status_row)
 
+        intelligence_strip = QGridLayout()
+        intelligence_strip.setHorizontalSpacing(8)
+
+        risk_panel = QFrame()
+        risk_panel.setObjectName("panel")
+        risk_layout = QVBoxLayout(risk_panel)
+        risk_layout.setContentsMargins(10, 8, 10, 8)
+        risk_layout.addWidget(QLabel("OPERATIONAL RISK"))
+        self.risk_score_value = QLabel("—")
+        self.risk_score_value.setStyleSheet("font-size:28px;font-weight:900;color:#31b7ff;")
+        self.risk_score_bar = QProgressBar()
+        self.risk_score_bar.setRange(0, 100)
+        self.risk_score_bar.setValue(0)
+        self.risk_score_bar.setFormat("RISK %p%")
+        risk_layout.addWidget(self.risk_score_value)
+        risk_layout.addWidget(self.risk_score_bar)
+        intelligence_strip.addWidget(risk_panel, 0, 0)
+
+        exposure_panel = QFrame()
+        exposure_panel.setObjectName("panel")
+        exposure_layout = QVBoxLayout(exposure_panel)
+        exposure_layout.setContentsMargins(10, 8, 10, 8)
+        exposure_layout.addWidget(QLabel("EXPOSURE SUMMARY"))
+        self.exposure_summary = QLabel("No scan selected")
+        self.exposure_summary.setObjectName("muted")
+        self.exposure_summary.setWordWrap(True)
+        exposure_layout.addWidget(self.exposure_summary)
+        intelligence_strip.addWidget(exposure_panel, 0, 1)
+
+        ai_panel = QFrame()
+        ai_panel.setObjectName("panel")
+        ai_layout = QVBoxLayout(ai_panel)
+        ai_layout.setContentsMargins(10, 8, 10, 8)
+        ai_layout.addWidget(QLabel("BLACKTERM AI // NEXT ACTION"))
+        self.ai_recommendation = QLabel("Select an investigation to generate analyst guidance.")
+        self.ai_recommendation.setObjectName("muted")
+        self.ai_recommendation.setWordWrap(True)
+        ai_layout.addWidget(self.ai_recommendation)
+        intelligence_strip.addWidget(ai_panel, 0, 2)
+        intelligence_strip.setColumnStretch(0, 1)
+        intelligence_strip.setColumnStretch(1, 2)
+        intelligence_strip.setColumnStretch(2, 3)
+        root.addLayout(intelligence_strip)
+
         splitter = QSplitter(Qt.Vertical)
         splitter.setChildrenCollapsible(False)
 
@@ -95,13 +143,54 @@ class InvestigationWorkspacePage(QWidget):
         )
         hint.setObjectName("muted")
         graph_layout.addWidget(hint)
+        graph_body = QSplitter(Qt.Horizontal)
+        graph_body.setChildrenCollapsible(False)
         self.graph = AttackSurfaceGraph()
         self.graph.setMinimumHeight(500)
         self.graph.nodeActivated.connect(self.inspect_node)
         rendered = getattr(self.graph, "graphRendered", None)
         if rendered is not None:
             rendered.connect(self._graph_rendered)
-        graph_layout.addWidget(self.graph, 1)
+        graph_body.addWidget(self.graph)
+
+        self.analyst_tabs = QTabWidget()
+        self.analyst_tabs.setMinimumWidth(310)
+        self.analyst_tabs.setMaximumWidth(420)
+
+        evidence_tab = QWidget()
+        evidence_layout = QVBoxLayout(evidence_tab)
+        self.evidence_title = QLabel("NO NODE SELECTED")
+        self.evidence_title.setStyleSheet("font-size:16px;font-weight:900;color:#31b7ff;")
+        self.evidence_body = QTextEdit()
+        self.evidence_body.setReadOnly(True)
+        self.evidence_body.setPlainText("Select a graph node to inspect collected evidence and relationships.")
+        evidence_layout.addWidget(self.evidence_title)
+        evidence_layout.addWidget(self.evidence_body, 1)
+        self.analyst_tabs.addTab(evidence_tab, "EVIDENCE")
+
+        timeline_tab = QWidget()
+        timeline_layout = QVBoxLayout(timeline_tab)
+        self.timeline_status = QLabel("INVESTIGATION TIMELINE")
+        self.timeline_status.setObjectName("muted")
+        self.timeline_list = QListWidget()
+        timeline_layout.addWidget(self.timeline_status)
+        timeline_layout.addWidget(self.timeline_list, 1)
+        self.analyst_tabs.addTab(timeline_tab, "TIMELINE")
+
+        ai_tab = QWidget()
+        ai_tab_layout = QVBoxLayout(ai_tab)
+        self.ai_confidence = QLabel("CONFIDENCE // —")
+        self.ai_confidence.setStyleSheet("font-weight:900;color:#36e6b0;")
+        self.ai_brief = QTextEdit()
+        self.ai_brief.setReadOnly(True)
+        self.ai_brief.setPlainText("BLACKTERM AI is waiting for investigation context.")
+        ai_tab_layout.addWidget(self.ai_confidence)
+        ai_tab_layout.addWidget(self.ai_brief, 1)
+        self.analyst_tabs.addTab(ai_tab, "AI ANALYST")
+
+        graph_body.addWidget(self.analyst_tabs)
+        graph_body.setSizes([980, 330])
+        graph_layout.addWidget(graph_body, 1)
         splitter.addWidget(graph_panel)
 
         details = QFrame()
@@ -145,6 +234,11 @@ class InvestigationWorkspacePage(QWidget):
         splitter.setSizes([650, 190])
         root.addWidget(splitter, 1)
 
+        self._replay_steps: list[str] = []
+        self._replay_index = 0
+        self._replay_timer = QTimer(self)
+        self._replay_timer.setInterval(420)
+        self._replay_timer.timeout.connect(self._advance_replay)
         self.refresh()
 
     def refresh(self):
@@ -192,6 +286,15 @@ class InvestigationWorkspacePage(QWidget):
             self.node_kind.setText("NODE DETAILS")
             self.node_title.setText("Select a node")
             self.node_body.setPlainText("Run or select a completed scan to populate the workspace.")
+            self.risk_score_value.setText("—")
+            self.risk_score_bar.setValue(0)
+            self.exposure_summary.setText("No scan selected")
+            self.ai_recommendation.setText("Select an investigation to generate analyst guidance.")
+            self.timeline_list.clear()
+            self.evidence_title.setText("NO NODE SELECTED")
+            self.evidence_body.setPlainText("Select a graph node to inspect collected evidence and relationships.")
+            self.ai_confidence.setText("CONFIDENCE // —")
+            self.ai_brief.setPlainText("BLACKTERM AI is waiting for investigation context.")
             return
 
         color = RISK_COLORS.get(surface.risk_level, "#31b7ff")
@@ -206,6 +309,28 @@ class InvestigationWorkspacePage(QWidget):
             f"{len(surface.open_ports)} ports • {len(surface.technologies)} technologies • "
             f"{len(surface.findings)} findings"
         )
+        self.risk_score_value.setText(f"{surface.risk_level}  {surface.risk_score}/100")
+        self.risk_score_value.setStyleSheet(
+            f"font-size:24px;font-weight:900;color:{color};"
+        )
+        self.risk_score_bar.setValue(surface.risk_score)
+        finding_counts = {}
+        for finding in surface.findings:
+            severity = (finding.severity or "info").upper()
+            finding_counts[severity] = finding_counts.get(severity, 0) + 1
+        severity_text = " • ".join(
+            f"{name}: {count}" for name, count in sorted(finding_counts.items())
+        ) or "No findings"
+        self.exposure_summary.setText(
+            f"{len(surface.open_ports)} exposed service(s) • "
+            f"{len(surface.technologies)} technology signal(s)\n{severity_text}"
+        )
+        recommendation = self._build_ai_recommendation(surface)
+        self.ai_recommendation.setText(recommendation)
+        self._populate_timeline(surface)
+        confidence = min(98, 62 + len(surface.open_ports) * 4 + len(surface.findings) * 5 + len(surface.technologies) * 3)
+        self.ai_confidence.setText(f"CONFIDENCE // {confidence}%")
+        self.ai_brief.setPlainText(self._build_ai_brief(surface, recommendation, confidence))
         self.inspect_node(GraphNodeData("target", surface.target, surface.hostname or surface.ip))
 
     def _fit_graph(self):
@@ -216,11 +341,26 @@ class InvestigationWorkspacePage(QWidget):
             self.graph.fitInView(self.graph.scene().sceneRect(), Qt.KeepAspectRatio)
 
     def _replay_graph(self):
+        if self.current_surface is None:
+            return
         replay = getattr(self.graph, "replay", None)
         if callable(replay):
             replay()
-        elif self.current_surface is not None:
-            self.graph.render_surface(self.current_surface)
+        self.analyst_tabs.setCurrentIndex(1)
+        self.timeline_list.clear()
+        self._replay_steps = self._timeline_entries(self.current_surface)
+        self._replay_index = 0
+        self.timeline_status.setText("REPLAY ACTIVE // reconstructing investigation")
+        self._replay_timer.start()
+
+    def _advance_replay(self):
+        if self._replay_index >= len(self._replay_steps):
+            self._replay_timer.stop()
+            self.timeline_status.setText("REPLAY COMPLETE // evidence chain reconstructed")
+            return
+        self.timeline_list.addItem(self._replay_steps[self._replay_index])
+        self.timeline_list.scrollToBottom()
+        self._replay_index += 1
 
     def _graph_rendered(self, nodes: int, relationships: int):
         self.graph_status.setText(f"{nodes} nodes • {relationships} relationships")
@@ -268,6 +408,85 @@ class InvestigationWorkspacePage(QWidget):
         else:
             body = node.subtitle
         self.node_body.setPlainText(body)
+        self.evidence_title.setText(f"{node.kind.upper()} // {node.title}")
+        self.evidence_body.setPlainText(body)
+        self.analyst_tabs.setCurrentIndex(0)
+
+    @staticmethod
+    def _timeline_entries(surface: AttackSurface) -> list[str]:
+        entries = [
+            f"01  SCOPE LOCKED      {surface.target}",
+            f"02  ASSET RESOLVED    {surface.hostname or surface.ip}",
+            f"03  PROFILE APPLIED   {surface.profile.upper()}",
+            f"04  PORT DISCOVERY    {len(surface.open_ports)} exposed service(s)",
+        ]
+        for port, service in list(zip(surface.open_ports, surface.services))[:8]:
+            entries.append(f"{len(entries)+1:02d}  SERVICE OBSERVED  TCP/{port} {service}")
+        if surface.technologies:
+            entries.append(f"{len(entries)+1:02d}  TECH CORRELATED    {', '.join(surface.technologies[:4])}")
+        entries.append(f"{len(entries)+1:02d}  RISK CALCULATED    {surface.risk_level} {surface.risk_score}/100")
+        entries.append(f"{len(entries)+1:02d}  AI BRIEF READY     analyst context generated")
+        return entries
+
+    def _populate_timeline(self, surface: AttackSurface) -> None:
+        self.timeline_list.clear()
+        for entry in self._timeline_entries(surface):
+            self.timeline_list.addItem(entry)
+        self.timeline_status.setText(f"{self.timeline_list.count()} EVENTS // evidence chain complete")
+
+    @staticmethod
+    def _build_ai_brief(surface: AttackSurface, recommendation: str, confidence: int) -> str:
+        services = ", ".join(f"TCP/{p}" for p in surface.open_ports[:8]) or "No exposed TCP services"
+        tech = ", ".join(surface.technologies[:6]) or "No technology fingerprints"
+        return (
+            "INVESTIGATION SUMMARY\n\n"
+            f"Target: {surface.target}\n"
+            f"Risk: {surface.risk_level} ({surface.risk_score}/100)\n"
+            f"Confidence: {confidence}%\n"
+            f"Observed services: {services}\n"
+            f"Technology context: {tech}\n\n"
+            "ANALYST ASSESSMENT\n"
+            f"{recommendation}\n\n"
+            "SAFE NEXT STEPS\n"
+            "• Validate ownership and authorized scope\n"
+            "• Preserve scan evidence and timestamps\n"
+            "• Review the highest-severity dossier\n"
+            "• Compare against historical scans before escalation"
+        )
+
+    @staticmethod
+    def _build_ai_recommendation(surface: AttackSurface) -> str:
+        ports = set(surface.open_ports)
+        if any(port in ports for port in (3389, 5900, 22)):
+            return (
+                "Remote administration exposure detected. Validate authorization, restrict source ranges, "
+                "review authentication controls, and correlate the service with known asset ownership."
+            )
+        if any(port in ports for port in (445, 139)):
+            return (
+                "File-sharing services are externally visible. Confirm segmentation, inspect SMB hardening, "
+                "and review the related finding dossier before expanding enumeration."
+            )
+        if any(port in ports for port in (80, 443, 8080, 8443)):
+            return (
+                "Web exposure is present. Capture application evidence, inventory technologies, review TLS, "
+                "and run authorized content discovery against the confirmed scope."
+            )
+        if surface.findings:
+            highest = max(
+                surface.findings,
+                key=lambda item: {"critical": 4, "high": 3, "medium": 2, "low": 1}.get(
+                    (item.severity or "").lower(), 0
+                ),
+            )
+            return (
+                f"Prioritize {highest.severity.upper()} finding: {highest.title}. "
+                "Open the dossier, verify the evidence, and document remediation ownership."
+            )
+        return (
+            "No immediate high-confidence exposure was identified. Preserve the evidence, validate asset "
+            "ownership, and compare this scan with historical results for meaningful changes."
+        )
 
     @staticmethod
     def _matches(finding: SurfaceFinding, port: int | None, service: str | None) -> bool:

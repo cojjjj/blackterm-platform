@@ -318,3 +318,110 @@ QLabel#liveComplete {
 
 def premium_stylesheet() -> str:
     return PREMIUM_STYLESHEET
+
+# v9 workspace shell additions
+PREMIUM_STYLESHEET += r"""
+QFrame#workspaceHeader {
+    min-height: 64px;
+    background: rgba(7, 13, 24, 245);
+    border: 1px solid #234d70;
+    border-radius: 13px;
+}
+QLabel#headerEyebrow {
+    color: #36e6b0;
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 1.8px;
+}
+QLabel#headerTitle {
+    color: #f7fbff;
+    font-size: 20px;
+    font-weight: 900;
+}
+QLabel#onlineBadge {
+    padding: 6px 10px;
+    border-radius: 9px;
+    background: rgba(54, 230, 176, 24);
+    border: 1px solid rgba(54, 230, 176, 90);
+    color: #36e6b0;
+    font-size: 9px;
+    font-weight: 900;
+}
+QLabel#operatorBadge, QLabel#shortcutBadge {
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #101d2d;
+    border: 1px solid #31577f;
+    color: #d8efff;
+    font-family: Consolas;
+    font-size: 9px;
+    font-weight: 900;
+}
+QLabel#shortcutBadge:hover { border-color: #31b7ff; color: #ffffff; }
+QLabel#headerClock {
+    color: #8ea5be;
+    font-family: Consolas;
+    font-size: 9px;
+    font-weight: 700;
+}
+QPushButton#headerCommand {
+    background: #0b1624;
+    border-color: #31577f;
+}
+QFrame#commandBar {
+    background: rgba(7, 13, 24, 245);
+    border: 1px solid #234d70;
+    border-radius: 11px;
+}
+QLabel#commandPrompt {
+    font-family: Consolas;
+    color: #36e6b0;
+    font-weight: 900;
+}
+QLineEdit#commandInput {
+    background: transparent;
+    border: none;
+    padding: 5px;
+}
+QDialog#commandPalette {
+    background: #070d18;
+    border: 1px solid #3a7aa7;
+    border-radius: 14px;
+}
+QLabel#paletteTitle {
+    color: #f7fbff;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 1.2px;
+}
+QLineEdit#paletteSearch {
+    min-height: 38px;
+    padding: 8px 12px;
+    font-size: 13px;
+    border: 1px solid #31b7ff;
+    border-radius: 10px;
+    background: #091522;
+}
+QListWidget#paletteResults {
+    border: none;
+    background: transparent;
+    outline: none;
+}
+QListWidget#paletteResults::item {
+    min-height: 48px;
+    padding: 9px 12px;
+    margin: 2px 0;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    color: #d9e8f5;
+}
+QListWidget#paletteResults::item:hover {
+    background: #10263b;
+    border-color: #315d82;
+}
+QListWidget#paletteResults::item:selected {
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 #14395a, stop:1 #173349);
+    border-color: #31b7ff;
+    color: #ffffff;
+}
+"""

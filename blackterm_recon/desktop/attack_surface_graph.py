@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QGraphicsItem,
     QGraphicsObject,
     QGraphicsPathItem,
+    QGraphicsEllipseItem,
     QGraphicsScene,
     QGraphicsView,
     QWidget,
@@ -202,6 +203,13 @@ class AttackSurfaceGraph(QGraphicsView):
         self.setResizeAnchor(QGraphicsView.AnchorViewCenter)
         self.setStyleSheet("QGraphicsView{border:1px solid #244667;border-radius:10px;}")
         self._auto_fit = True
+        self._edge_paths: list[QPainterPath] = []
+        self._signal_dots: list[QGraphicsEllipseItem] = []
+        self._signal_phase = 0.0
+        self._signal_timer = QTimer(self)
+        self._signal_timer.setInterval(32)
+        self._signal_timer.timeout.connect(self._advance_signals)
+        self._signal_timer.start()
 
     def wheelEvent(self, event) -> None:
         if event.modifiers() & Qt.ControlModifier:
@@ -219,6 +227,8 @@ class AttackSurfaceGraph(QGraphicsView):
 
     def clear_surface(self, message: str = "Run an authorized scan to generate the graph.") -> None:
         self._scene.clear()
+        self._edge_paths.clear()
+        self._signal_dots.clear()
         item = self._scene.addText(message)
         item.setDefaultTextColor(QColor("#7890a8"))
         item.setFont(QFont("Segoe UI", 10))
@@ -239,8 +249,7 @@ class AttackSurfaceGraph(QGraphicsView):
             return "unknown"
         return "network"
 
-    @staticmethod
-    def _connect(scene: QGraphicsScene, start: QPointF, end: QPointF, color: QColor, width: float = 1.6) -> None:
+    def _connect(self, scene: QGraphicsScene, start: QPointF, end: QPointF, color: QColor, width: float = 1.6) -> None:
         path = QPainterPath(start)
         midpoint = (start.y() + end.y()) / 2
         path.cubicTo(start.x(), midpoint, end.x(), midpoint, end.x(), end.y())
@@ -249,6 +258,43 @@ class AttackSurfaceGraph(QGraphicsView):
         edge.setOpacity(0.76)
         edge.setZValue(-1)
         scene.addItem(edge)
+        self._edge_paths.append(path)
+        if len(self._signal_dots) < 18:
+            dot = QGraphicsEllipseItem(-3.5, -3.5, 7, 7)
+            dot.setBrush(QBrush(color.lighter(145)))
+            dot.setPen(QPen(color, 1.2))
+            dot.setZValue(3)
+            dot.setOpacity(0.9)
+            scene.addItem(dot)
+            self._signal_dots.append(dot)
+
+    def _advance_signals(self) -> None:
+        if not self._edge_paths or not self._signal_dots:
+            return
+        self._signal_phase = (self._signal_phase + 0.008) % 1.0
+        for index, dot in enumerate(tuple(self._signal_dots)):
+            try:
+                if not isValid(dot) or dot.scene() is None:
+                    continue
+                path = self._edge_paths[index % len(self._edge_paths)]
+                phase = (self._signal_phase + index * 0.13) % 1.0
+                dot.setPos(path.pointAtPercent(phase))
+                dot.setOpacity(0.35 + 0.65 * (1.0 - abs(phase - 0.5) * 2.0))
+            except RuntimeError:
+                continue
+
+    def replay(self) -> None:
+        self._signal_phase = 0.0
+        self._auto_fit = True
+        for index, item in enumerate(self._scene.items()):
+            if isinstance(item, SurfaceNode):
+                item.setOpacity(0.0)
+                item.animate_in(index * 65)
+
+    def fit_graph(self) -> None:
+        self._auto_fit = True
+        if not self._scene.sceneRect().isEmpty():
+            self.fitInView(self._scene.sceneRect(), Qt.KeepAspectRatio)
 
     def _add_node(self, node: SurfaceNode, delay_ms: int) -> None:
         node.activated.connect(self.nodeActivated.emit)
@@ -267,6 +313,9 @@ class AttackSurfaceGraph(QGraphicsView):
             return
 
         self._scene.clear()
+        self._edge_paths.clear()
+        self._signal_dots.clear()
+        self._signal_phase = 0.0
         self.resetTransform()
         self._auto_fit = True
 

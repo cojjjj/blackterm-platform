@@ -72,11 +72,12 @@ class RelationshipGraphPage(QWidget):
         controls = QHBoxLayout()
         controls.addWidget(QLabel("VIEW"))
         self.view_mode = QComboBox()
-        self.view_mode.addItem("EXPLORE", "explore")
         self.view_mode.addItem("NETWORK", "network")
+        self.view_mode.addItem("EXPLORE", "explore")
         self.view_mode.addItem("CLUSTER", "cluster")
         self.view_mode.addItem("TREE", "tree")
         self.view_mode.setCurrentIndex(0)
+        self.graph.set_layout_mode("network")
         self.view_mode.currentIndexChanged.connect(
             lambda _index: self.graph.set_layout_mode(self.view_mode.currentData())
         )
@@ -103,7 +104,43 @@ class RelationshipGraphPage(QWidget):
         controls.addWidget(self.focus_button)
         controls.addWidget(self.clear_focus_button)
         root.addLayout(controls)
-        root.addWidget(self.graph, 1)
+
+        workspace = QHBoxLayout()
+        workspace.setSpacing(10)
+        workspace.addWidget(self.graph, 1)
+
+        self.inspector = QFrame()
+        self.inspector.setObjectName("metricCard")
+        self.inspector.setMinimumWidth(285)
+        self.inspector.setMaximumWidth(360)
+        inspector_layout = QVBoxLayout(self.inspector)
+        inspector_layout.setContentsMargins(16, 16, 16, 16)
+        inspector_layout.setSpacing(10)
+        inspector_title = QLabel("ENTITY INSPECTOR")
+        inspector_title.setObjectName("sectionTitle")
+        self.inspector_kind = QLabel("NO ENTITY SELECTED")
+        self.inspector_kind.setObjectName("metricLabel")
+        self.inspector_label = QLabel("Select a node to inspect intelligence context.")
+        self.inspector_label.setObjectName("metricValue")
+        self.inspector_label.setWordWrap(True)
+        self.inspector_risk = QLabel("RISK // --")
+        self.inspector_risk.setObjectName("graphBreadcrumb")
+        self.inspector_detail = QLabel(
+            "Hover a node to isolate its direct relationships. Animated signals show active correlation paths."
+        )
+        self.inspector_detail.setWordWrap(True)
+        self.inspector_detail.setObjectName("graphDetail")
+        self.inspector_links = QLabel("CONNECTED ENTITIES // 0")
+        self.inspector_links.setObjectName("sectionTitle")
+        inspector_layout.addWidget(inspector_title)
+        inspector_layout.addWidget(self.inspector_kind)
+        inspector_layout.addWidget(self.inspector_label)
+        inspector_layout.addWidget(self.inspector_risk)
+        inspector_layout.addWidget(self.inspector_detail)
+        inspector_layout.addWidget(self.inspector_links)
+        inspector_layout.addStretch()
+        workspace.addWidget(self.inspector)
+        root.addLayout(workspace, 1)
 
         actions = QHBoxLayout()
         self.open_case = QPushButton("OPEN LINKED CASE")
@@ -134,7 +171,18 @@ class RelationshipGraphPage(QWidget):
         self.selected_node = node
         self.open_case.setEnabled(self.graph.linked_case_id(node.node_id) is not None)
         self.focus_button.setEnabled(True)
-        self.context.setText(f"{node.kind} // {node.label}\n{node.detail or 'No additional context recorded.'}")
+        detail = node.detail or "No additional context recorded."
+        related = 0
+        for edge in self.graph.snapshot.edges:
+            if edge.source == node.node_id or edge.target == node.node_id:
+                related += 1
+        signal = "HIGH" if node.risk >= 18 else "WATCH" if node.risk >= 10 else "CONTEXT"
+        self.inspector_kind.setText(str(node.kind).upper())
+        self.inspector_label.setText(node.label)
+        self.inspector_risk.setText(f"RISK // {node.risk} // {signal}")
+        self.inspector_detail.setText(detail)
+        self.inspector_links.setText(f"CONNECTED ENTITIES // {related}")
+        self.context.setText(f"{node.kind} // {node.label}\n{detail}")
 
     def _strength_changed(self, value: int):
         self.strength_value.setText(f"{value}%+")

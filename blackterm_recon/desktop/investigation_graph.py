@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QGraphicsItem,
     QGraphicsObject,
     QGraphicsPathItem,
+    QGraphicsEllipseItem,
     QGraphicsScene,
     QGraphicsTextItem,
     QGraphicsView,
@@ -99,8 +100,32 @@ class EdgeItem(QGraphicsPathItem):
         self.setPath(path)
 
 
+class FlowParticle(QGraphicsEllipseItem):
+    """Small animated telemetry marker that travels along a graph edge."""
+
+    def __init__(self, edge_item: EdgeItem, phase: float = 0.0):
+        super().__init__(-3.2, -3.2, 6.4, 6.4)
+        self.edge_item = edge_item
+        self.phase = phase
+        color = _node_color(edge_item.target.node.kind, edge_item.target.node.risk)
+        glow = QColor(color)
+        glow.setAlpha(235)
+        self.setBrush(QBrush(glow))
+        self.setPen(QPen(QColor("#dff8ff"), 0.8))
+        self.setZValue(-2)
+        self.setOpacity(0.82)
+        self.advance_phase(0.0)
+
+    def advance_phase(self, amount: float):
+        self.phase = (self.phase + amount) % 1.0
+        path = self.edge_item.path()
+        if not path.isEmpty():
+            self.setPos(path.pointAtPercent(self.phase))
+
+
 class NodeItem(QGraphicsObject):
     selected_node = Signal(object)
+    hovered_node = Signal(object, bool)
     activated_node = Signal(object)
     moved = Signal()
 
@@ -194,13 +219,17 @@ class NodeItem(QGraphicsObject):
 
     def hoverEnterEvent(self, event):
         self._hovered = True
-        self.setScale(1.08)
+        self.setScale(1.10)
+        self.setZValue(60)
+        self.hovered_node.emit(self.node, True)
         self.update()
         super().hoverEnterEvent(event)
 
     def hoverLeaveEvent(self, event):
         self._hovered = False
         self.setScale(1.0)
+        self.setZValue(10)
+        self.hovered_node.emit(self.node, False)
         self.update()
         super().hoverLeaveEvent(event)
 
@@ -258,6 +287,10 @@ class InvestigationGraph(QWidget):
         self.view = GraphView(self.scene, self)
         self.node_items: dict[str, NodeItem] = {}
         self.edge_items: list[EdgeItem] = []
+        self.flow_particles: list[FlowParticle] = []
+        self._flow_timer = QTimer(self)
+        self._flow_timer.setInterval(36)
+        self._flow_timer.timeout.connect(self._advance_flow_particles)
         self._live_nodes: list[GraphNode] = []
         self._live_edges: list[GraphEdge] = []
         self._live_index = 0
@@ -300,9 +333,11 @@ class InvestigationGraph(QWidget):
     def clear_graph(self):
         self._live_timer.stop()
         self._graphics_animator.registry.stop_all()
+        self._flow_timer.stop()
         self.scene.clear()
         self.node_items.clear()
         self.edge_items.clear()
+        self.flow_particles.clear()
         self.snapshot = GraphSnapshot((), ())
         self.status.setText("GRAPH // WAITING FOR CORRELATION")
         self.detail.setText(
@@ -482,13 +517,16 @@ class InvestigationGraph(QWidget):
         self.view.fitInView(bounds, Qt.KeepAspectRatio)
 
     def render_snapshot(self, snapshot: GraphSnapshot):
+        self._flow_timer.stop()
         self.scene.clear()
         self.node_items.clear()
         self.edge_items.clear()
+        self.flow_particles.clear()
 
         for node in snapshot.nodes:
             item = NodeItem(node)
             item.selected_node.connect(self._show_node)
+            item.hovered_node.connect(self._hover_node)
             item.activated_node.connect(self.toggle_expansion)
             self.scene.addItem(item)
             self.node_items[node.node_id] = item
@@ -502,9 +540,46 @@ class InvestigationGraph(QWidget):
             self.scene.addItem(item)
             self.edge_items.append(item)
 
+        # Animate a capped number of links so dense graphs remain smooth.
+        for index, edge_item in enumerate(self.edge_items[:48]):
+            particle = FlowParticle(edge_item, (index * 0.173) % 1.0)
+            self.scene.addItem(particle)
+            self.flow_particles.append(particle)
+        if self.flow_particles:
+            self._flow_timer.start()
+
         bounds = self.scene.itemsBoundingRect().adjusted(-120, -120, 120, 120)
         self.scene.setSceneRect(bounds)
         self.fit_graph()
+
+    def _advance_flow_particles(self):
+        for index, particle in enumerate(self.flow_particles):
+            particle.advance_phase(0.006 + (index % 5) * 0.0008)
+
+    def _hover_node(self, node: GraphNode, active: bool):
+        if not active:
+            for item in self.node_items.values():
+                item.setOpacity(1.0)
+            for edge in self.edge_items:
+                edge.setOpacity(1.0)
+            for particle in self.flow_particles:
+                particle.setOpacity(0.82)
+            return
+
+        neighbors = {node.node_id}
+        related_edges = set()
+        for edge_item in self.edge_items:
+            edge = edge_item.edge
+            if edge.source == node.node_id:
+                neighbors.add(edge.target); related_edges.add(id(edge_item))
+            elif edge.target == node.node_id:
+                neighbors.add(edge.source); related_edges.add(id(edge_item))
+        for node_id, item in self.node_items.items():
+            item.setOpacity(1.0 if node_id in neighbors else 0.13)
+        for edge in self.edge_items:
+            edge.setOpacity(1.0 if id(edge) in related_edges else 0.08)
+        for particle in self.flow_particles:
+            particle.setOpacity(1.0 if id(particle.edge_item) in related_edges else 0.04)
 
     def toggle_expansion(self, node: GraphNode):
         """Expand or collapse one node in case-first explorer mode."""

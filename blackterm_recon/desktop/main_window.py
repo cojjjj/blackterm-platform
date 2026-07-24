@@ -3,7 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import QEvent, QThread
 from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QMessageBox, QStackedWidget, QVBoxLayout, QWidget
 
-from .command_bar import CommandBar
+from .command_bar import CommandBar, CommandPalette
 from .dock import Dock
 from .event_feed import EventFeedPage, Toast
 from .pages.assistant import AssistantPage
@@ -33,6 +33,7 @@ from .event_bridge import QtEventBridge
 from .living_interface import BootOverlay, FadeController
 from .render_engine import RenderSurface
 from .premium_style import premium_stylesheet
+from .workspace_header import WorkspaceHeader
 
 
 class MainWindow(QMainWindow):
@@ -44,7 +45,7 @@ class MainWindow(QMainWindow):
         self.event_store = event_store
         self.workflow_thread = None
         self.workflow_worker = None
-        self.setWindowTitle("BLACKTERM v7.3 // Investigation Explorer")
+        self.setWindowTitle("BLACKTERM X v10.0 // Investigation OS")
         self.resize(1540, 920)
         self.setMinimumSize(1160, 740)
         self.setMouseTracking(True)
@@ -126,8 +127,16 @@ class MainWindow(QMainWindow):
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(10)
+        self.workspace_header = WorkspaceHeader(operator, self)
+        self.workspace_header.new_investigation_requested.connect(self.start_new_investigation)
+        self.workspace_header.command_palette_requested.connect(self.open_command_palette)
+        content_layout.addWidget(self.workspace_header)
         content_layout.addWidget(self.stack, 1)
-        self.command_bar = CommandBar(self.execute_command)
+        self.command_bar = CommandBar(self.execute_command, self)
+        self.command_bar.palette_requested.connect(self.open_command_palette)
+        self.palette_shortcut = self.command_bar.install_palette_shortcut(self)
+        self.command_palette = CommandPalette(parent=self)
+        self.command_palette.command_selected.connect(self.execute_command)
         content_layout.addWidget(self.command_bar)
         layout.addWidget(content, 1)
 
@@ -180,6 +189,11 @@ class MainWindow(QMainWindow):
         self.apply_theme(engine.config.theme)
         root_widget.installEventFilter(self)
 
+
+    def open_command_palette(self):
+        self.command_palette.show()
+        self.command_palette.raise_()
+        self.command_palette.activateWindow()
 
     def start_new_investigation(self):
         if self.workflow_thread is not None and self.workflow_thread.isRunning():
@@ -336,6 +350,8 @@ class MainWindow(QMainWindow):
 
     def show_page(self, index):
         self.stack.setCurrentIndex(index)
+        if hasattr(self, "workspace_header"):
+            self.workspace_header.set_page(self.pages[index][0])
         page = self.pages[index][1]
         if hasattr(page, "refresh"):
             page.refresh()

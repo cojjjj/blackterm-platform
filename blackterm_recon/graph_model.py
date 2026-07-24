@@ -241,21 +241,72 @@ def build_graph_snapshot(
                 positioned.append(make(item, level * column_gap, y0 + row * row_gap, row))
 
     else:
-        grouped: dict[int, list[Any]] = {}
-        for node in raw_nodes:
-            kind = str(_value(node, "kind", "OTHER") or "OTHER").upper()
-            grouped.setdefault(KIND_RINGS.get(kind, 4), []).append(node)
-        for ring in sorted(grouped):
-            members = sorted(grouped[ring], key=lambda item: (str(_value(item, "kind", "")), str(_value(item, "label", "")), str(_value(item, "node_id", ""))))
-            if ring == 0:
-                for index, item in enumerate(members):
-                    positioned.append(make(item, (index - (len(members) - 1) / 2) * 180.0, 0.0, index))
-                continue
-            # Increase radius when a ring is crowded so labels and nodes do not form a solid circle.
-            radius = max(ring * ring_spacing, (len(members) * 75.0) / (2 * pi))
-            for index, item in enumerate(members):
-                angle = -pi / 2 + (2 * pi * index / max(1, len(members)))
-                positioned.append(make(item, cos(angle) * radius, sin(angle) * radius, index))
+        # Deterministic force-directed overview.  Start from stable rings, then
+        # relax the positions using repulsion, link attraction, and centering.
+        # This avoids the long horizontal rows produced by sparse case-only
+        # graphs while keeping repeated renders predictable.
+        by_id = {str(_value(n, "node_id", "")): n for n in raw_nodes}
+        ids = sorted(by_id)
+        positions: dict[str, list[float]] = {}
+        count = max(1, len(ids))
+        initial_radius = max(220.0, min(760.0, count * 24.0))
+        for index, node_id in enumerate(ids):
+            angle = -pi / 2 + 2 * pi * index / count
+            kind = str(_value(by_id[node_id], "kind", "OTHER") or "OTHER").upper()
+            ring_bias = 0.72 + min(4, KIND_RINGS.get(kind, 4)) * 0.12
+            positions[node_id] = [cos(angle) * initial_radius * ring_bias, sin(angle) * initial_radius * ring_bias]
+
+        links = []
+        for edge in raw_edges:
+            source = str(_value(edge, "source", ""))
+            target = str(_value(edge, "target", ""))
+            if source in positions and target in positions and source != target:
+                links.append((source, target))
+
+        area = max(900_000.0, count * 75_000.0)
+        ideal = sqrt(area / count) * 0.78
+        temperature = max(120.0, ideal * 0.9)
+        for iteration in range(110):
+            disp = {node_id: [0.0, 0.0] for node_id in ids}
+            for i, left in enumerate(ids):
+                lx, ly = positions[left]
+                for right in ids[i + 1:]:
+                    rx, ry = positions[right]
+                    dx, dy = lx - rx, ly - ry
+                    distance = max(18.0, sqrt(dx * dx + dy * dy))
+                    force = ideal * ideal / distance
+                    fx, fy = dx / distance * force, dy / distance * force
+                    disp[left][0] += fx; disp[left][1] += fy
+                    disp[right][0] -= fx; disp[right][1] -= fy
+            for source, target in links:
+                sx, sy = positions[source]; tx, ty = positions[target]
+                dx, dy = sx - tx, sy - ty
+                distance = max(18.0, sqrt(dx * dx + dy * dy))
+                force = distance * distance / max(1.0, ideal)
+                fx, fy = dx / distance * force, dy / distance * force
+                disp[source][0] -= fx; disp[source][1] -= fy
+                disp[target][0] += fx; disp[target][1] += fy
+            for node_id in ids:
+                x, y = positions[node_id]
+                # Gentle gravity prevents disconnected groups drifting away.
+                disp[node_id][0] -= x * 0.035
+                disp[node_id][1] -= y * 0.035
+                dx, dy = disp[node_id]
+                magnitude = max(1.0, sqrt(dx * dx + dy * dy))
+                step = min(temperature, magnitude)
+                positions[node_id][0] += dx / magnitude * step
+                positions[node_id][1] += dy / magnitude * step
+            temperature *= 0.965
+
+        case_ids = [
+            node_id for node_id in ids
+            if str(_value(by_id[node_id], "kind", "")).upper() == "CASE"
+        ]
+        anchor_id = case_ids[0] if case_ids else ids[0]
+        anchor_x, anchor_y = positions[anchor_id]
+        for index, node_id in enumerate(ids):
+            x, y = positions[node_id]
+            positioned.append(make(by_id[node_id], x - anchor_x, y - anchor_y, index))
 
     valid_ids = {node.node_id for node in positioned}
     normalized_edges: list[GraphEdge] = []

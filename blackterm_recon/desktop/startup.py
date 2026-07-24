@@ -22,18 +22,18 @@ class StartupSequence(QDialog):
         self.setWindowTitle("BLACKTERM")
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.resize(780, 500)
+        self.resize(860, 540)
 
         shell = QFrame()
         shell.setObjectName("panel")
         shell.setStyleSheet(
             """
-            QFrame#panel { background: #08060d; border: 1px solid #4b245b; border-radius: 18px; }
+            QFrame#panel { background: #050914; border: 1px solid #285273; border-radius: 18px; }
             QLabel { color: #f5efff; }
-            QLineEdit { background: #171020; color: #f5efff; border: 1px solid #4b245b; border-radius: 8px; padding: 10px; }
-            QPushButton { background: #c000ff; color: #08060d; font-weight: 900; border: none; border-radius: 8px; padding: 11px; }
-            QProgressBar { background: #171020; border: 1px solid #4b245b; border-radius: 6px; text-align: center; }
-            QProgressBar::chunk { background: #c000ff; border-radius: 5px; }
+            QLineEdit { background: #07111f; color: #f5efff; border: 1px solid #285273; border-radius: 8px; padding: 10px; }
+            QPushButton { background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #31b7ff,stop:1 #36e6b0); color: #04111c; font-weight: 900; border: none; border-radius: 8px; padding: 11px; }
+            QProgressBar { background: #07111f; border: 1px solid #285273; border-radius: 6px; text-align: center; }
+            QProgressBar::chunk { background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #31b7ff,stop:0.65 #27c6ee,stop:1 #b000ff); border-radius: 5px; }
             """
         )
         outer = QVBoxLayout(self)
@@ -44,8 +44,8 @@ class StartupSequence(QDialog):
         boot_layout = QVBoxLayout(boot)
         boot_layout.setContentsMargins(54, 44, 54, 44)
         title = QLabel("BLACKTERM")
-        title.setStyleSheet("font-size: 42px; font-weight: 950; color: #c000ff;")
-        sub = QLabel("LIVING DESKTOP SECURITY PLATFORM // v6.0")
+        title.setStyleSheet("font-size: 48px; font-weight: 950; color: #31b7ff; letter-spacing: 3px;")
+        sub = QLabel("INTELLIGENCE OPERATING SYSTEM // BLACKTERM X")
         sub.setStyleSheet("font-size: 15px; color: #9b8aa8;")
         self.current_module = QLabel("BOOTSTRAP")
         self.current_module.setStyleSheet("font-size:18px;font-weight:900;color:#31b7ff;")
@@ -66,7 +66,7 @@ class StartupSequence(QDialog):
         login_layout = QVBoxLayout(login)
         login_layout.setContentsMargins(80, 62, 80, 62)
         login_title = QLabel("OPERATOR ACCESS")
-        login_title.setStyleSheet("font-size: 28px; font-weight: 900; color: #c000ff;")
+        login_title.setStyleSheet("font-size: 28px; font-weight: 900; color: #31b7ff;")
         login_sub = QLabel("Local profile only. No remote authentication is performed.")
         login_sub.setStyleSheet("color: #9b8aa8;")
         self.operator = QLineEdit("TYLER")
@@ -87,19 +87,21 @@ class StartupSequence(QDialog):
         self.stack.addWidget(login)
 
         self.steps = [
-            ("CORE", "Initializing BLACKTERM core..."),
-            ("EVENT BUS", "Opening persistent event stream..."),
-            ("RECON", "Loading threaded reconnaissance engine..."),
-            ("AI ANALYST", "Preparing local analysis context..."),
-            ("NETWORK", "Building topology workspace..."),
-            ("PLUGINS", "Loading plugin registry..."),
-            ("DESKTOP", "Preparing animated desktop shell..."),
-            ("READY", "Mission Control ready."),
+            ("CORE", "Kernel services initialized"),
+            ("VAULT", "Opening encrypted evidence workspace"),
+            ("EVENT BUS", "Persistent investigation stream online"),
+            ("RECON", "Reconnaissance engines armed"),
+            ("INTELLIGENCE", "OSINT and threat context synchronized"),
+            ("AI ANALYST", "BLACKTERM analyst context loaded"),
+            ("GRAPH ENGINE", "Relationship renderer and signal layer online"),
+            ("PLUGINS", "Extension registry verified"),
+            ("MISSION CONTROL", "Operator environment prepared"),
+            ("READY", "BLACKTERM X is ready"),
         ]
         self.step_index = 0
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.advance)
-        self.timer.start(235)
+        self.timer.start(185)
 
     def advance(self):
         if self.step_index < len(self.steps):

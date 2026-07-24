@@ -1,0 +1,13 @@
+BLACKTERM Package 5 — Screenshot Gallery
+
+Contents:
+- README-GALLERY.md
+- CAPTURE-GUIDE.md
+- docs/screenshots/
+- docs/screenshots/raw/
+- tools/frame_screenshots.py
+- tools/requirements.txt
+- tools/README.md
+
+This package provides the completed README gallery structure and an optional framing tool.
+Actual BLACKTERM UI screenshots must be captured from the running application and placed in the included folders.
