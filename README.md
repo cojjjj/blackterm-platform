@@ -20,9 +20,13 @@ Reconnaissance • Attack Surface Intelligence • OSINT • Threat Intelligence
 *"One investigation. One platform."*
 
 </div>
-![Python](https://img.shields.io/badge/Python-3.11+-blue)
-![Platform](https://img.shields.io/badge/Platform-Windows-success)
-![License](https://img.shields.io/badge/License-MIT-green)
+<p align="center">
+
+<img src="https://img.shields.io/badge/Python-3.11+-blue">
+<img src="https://img.shields.io/badge/Platform-Windows-success">
+<img src="https://img.shields.io/badge/License-MIT-green">
+
+</p>
 
 ## 📚 Documentation
 
