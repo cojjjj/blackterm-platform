@@ -1,17 +1,21 @@
 from __future__ import annotations
+from html import escape
 from pathlib import Path
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QDialog, QDialogButtonBox, QFormLayout,
-    QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit, QListWidget,
+    QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit, QListWidget, QInputDialog,
     QMessageBox, QProgressBar, QPushButton, QSlider, QSplitter, QTabWidget, QTabBar, QTableWidget,
-    QTableWidgetItem, QTextEdit, QTreeWidget, QTreeWidgetItem, QVBoxLayout,
+    QTableWidgetItem, QTextBrowser, QTextEdit, QTreeWidget, QTreeWidgetItem, QVBoxLayout,
     QWidget,
 )
 from ...case_reporting import write_case_report
 from ...case_completeness import assess_case_completeness
 from ...investigation_engine import assess_case
+from ...assistant_engine import (
+    answer_case_question, build_case_analyst_brief, investigation_quality,
+)
 from ...correlation_engine import correlate_case
 from ..investigation_graph import InvestigationGraph
 from ..intelligence_page import IntelligencePage
@@ -41,6 +45,11 @@ class CasesPage(QWidget):
         self.event_bus = event_bus
         self.timeline_events = []
         self.correlation_report = None
+        self.ai_chat_history = []
+        self.ai_message_records = []
+        self.ai_typing_timer = QTimer(self)
+        self.ai_typing_timer.timeout.connect(self._typing_tick)
+        self.ai_typing_state = None
 
         root = QVBoxLayout(self)
         head = QHBoxLayout()
@@ -53,6 +62,9 @@ class CasesPage(QWidget):
         operator_button.clicked.connect(self.open_operator_dashboard)
         intelligence_button = QPushButton("LIVE INVESTIGATION")
         intelligence_button.clicked.connect(self.open_intelligence_engine)
+        ai_builder = QPushButton("AI CASE BUILDER")
+        ai_builder.setToolTip("Describe or enter an authorized target and launch the autonomous investigation workflow.")
+        ai_builder.clicked.connect(self.open_ai_case_builder)
         new = QPushButton("NEW CASE")
         new.setObjectName("primary")
         new.clicked.connect(self.create_case)
@@ -61,6 +73,7 @@ class CasesPage(QWidget):
         head.addWidget(self.search, 1)
         head.addWidget(operator_button)
         head.addWidget(intelligence_button)
+        head.addWidget(ai_builder)
         head.addWidget(new)
         root.addLayout(head)
 
@@ -233,9 +246,112 @@ class CasesPage(QWidget):
 
         analyst = QWidget()
         analyst_layout = QVBoxLayout(analyst)
+
+        analyst_metrics = QHBoxLayout()
+        self.ai_risk = QLabel("RISK // --")
+        self.ai_confidence = QLabel("CONFIDENCE // --")
+        self.ai_evidence = QLabel("EVIDENCE // --")
+        self.ai_quality = QLabel("QUALITY // --")
+        self.ai_status = QLabel("STATUS // AWAITING ANALYSIS")
+        for metric in (self.ai_risk, self.ai_confidence, self.ai_evidence, self.ai_quality, self.ai_status):
+            metric.setObjectName("sectionTitle")
+            analyst_metrics.addWidget(metric)
+        analyst_metrics.addStretch()
+        analyst_layout.addLayout(analyst_metrics)
+
+        self.ai_progress = QProgressBar()
+        self.ai_progress.setRange(0, 100)
+        self.ai_progress.setValue(0)
+        self.ai_progress.setFormat("AI ANALYST READY")
+        self.ai_progress.setMinimumHeight(22)
+        analyst_layout.addWidget(self.ai_progress)
+
+        meter_row = QHBoxLayout()
+        self.ai_risk_meter = QProgressBar()
+        self.ai_risk_meter.setFormat("RISK %p%")
+        self.ai_confidence_meter = QProgressBar()
+        self.ai_confidence_meter.setFormat("CONFIDENCE %p%")
+        self.ai_quality_meter = QProgressBar()
+        self.ai_quality_meter.setFormat("INVESTIGATION QUALITY %p%")
+        for meter in (self.ai_risk_meter, self.ai_confidence_meter, self.ai_quality_meter):
+            meter.setRange(0, 100)
+            meter.setValue(0)
+            meter.setMinimumHeight(20)
+            meter_row.addWidget(meter, 1)
+        analyst_layout.addLayout(meter_row)
+
+        self.ai_context = QLabel("AI MEMORY // CASE --  •  SCANS 0  •  EVIDENCE 0  •  NOTES 0  •  TIMELINE 0")
+        self.ai_context.setObjectName("muted")
+        analyst_layout.addWidget(self.ai_context)
+
+        analyst_split = QSplitter(Qt.Horizontal)
         self.analysis = QTextEdit()
         self.analysis.setReadOnly(True)
-        analyst_layout.addWidget(self.analysis)
+        self.analysis.setPlaceholderText("Run AI Analysis to build a grounded case assessment.")
+        analyst_split.addWidget(self.analysis)
+
+        finding_panel = QFrame()
+        finding_panel.setObjectName("panel")
+        finding_layout = QVBoxLayout(finding_panel)
+        finding_title = QLabel("EXPLAINABLE FINDINGS")
+        finding_title.setObjectName("sectionTitle")
+        finding_layout.addWidget(finding_title)
+        self.ai_findings = QListWidget()
+        finding_layout.addWidget(self.ai_findings, 1)
+        explain = QPushButton("EXPLAIN SELECTED FINDING")
+        explain.clicked.connect(self.explain_selected_finding)
+        finding_layout.addWidget(explain)
+        self.ai_explanation = QTextEdit()
+        self.ai_explanation.setReadOnly(True)
+        self.ai_explanation.setMaximumHeight(190)
+        self.ai_explanation.setPlaceholderText("Select a finding to see why it matters and what to validate.")
+        finding_layout.addWidget(self.ai_explanation)
+        analyst_split.addWidget(finding_panel)
+        analyst_split.setSizes([700, 390])
+        analyst_layout.addWidget(analyst_split, 1)
+
+        suggestion_title = QLabel("SUGGESTED QUESTIONS")
+        suggestion_title.setObjectName("sectionTitle")
+        analyst_layout.addWidget(suggestion_title)
+        suggestion_row = QHBoxLayout()
+        self.ai_suggestion_buttons = []
+        for question in (
+            "Summarize this case",
+            "Why is this risky?",
+            "What changed?",
+            "What should I do next?",
+            "Explain every open port",
+        ):
+            button = QPushButton(question)
+            button.setToolTip(question)
+            button.clicked.connect(lambda checked=False, text=question: self.ask_suggested_question(text))
+            self.ai_suggestion_buttons.append(button)
+            suggestion_row.addWidget(button)
+        analyst_layout.addLayout(suggestion_row)
+
+        chat_title = QLabel("BLACKTERM AI CONVERSATION")
+        chat_title.setObjectName("sectionTitle")
+        analyst_layout.addWidget(chat_title)
+        self.ai_response = QTextBrowser()
+        self.ai_response.setOpenExternalLinks(False)
+        self.ai_response.anchorClicked.connect(self.open_ai_evidence_reference)
+        self.ai_response.setMinimumHeight(190)
+        self.ai_response.setPlaceholderText("Ask a case question. Every answer will show its supporting evidence references.")
+        analyst_layout.addWidget(self.ai_response, 1)
+
+        ask_row = QHBoxLayout()
+        self.ai_question = QLineEdit()
+        self.ai_question.setPlaceholderText("Ask about this case, its evidence, risk, changes, ports, or next actions...")
+        self.ai_question.returnPressed.connect(self.ask_ai_question)
+        self.ask_button = QPushButton("ASK AI ANALYST")
+        self.ask_button.setObjectName("primary")
+        self.ask_button.clicked.connect(self.ask_ai_question)
+        copy_button = QPushButton("COPY EXECUTIVE BRIEF")
+        copy_button.clicked.connect(self.copy_ai_brief)
+        ask_row.addWidget(self.ai_question, 1)
+        ask_row.addWidget(self.ask_button)
+        ask_row.addWidget(copy_button)
+        analyst_layout.addLayout(ask_row)
         self.tabs.addTab(analyst, "AI INVESTIGATION")
 
         export_tab = QWidget()
@@ -296,6 +412,28 @@ class CasesPage(QWidget):
     def open_intelligence_engine(self):
         self.tabs.setCurrentWidget(self.intelligence_page)
         self.intelligence_page.target.setFocus()
+
+    def open_ai_case_builder(self):
+        target, accepted = QInputDialog.getText(
+            self,
+            "BLACKTERM AI Case Builder",
+            "Enter an authorized domain, IP address, or hostname.\n\nBLACKTERM will open the autonomous workflow with the target preloaded.",
+        )
+        target = target.strip()
+        if not accepted or not target:
+            return
+        window = self.window()
+        starter = getattr(window, "start_new_investigation", None)
+        if callable(starter):
+            starter(prefill_target=target, ai_mode=True)
+            return
+        self.open_intelligence_engine()
+        self.intelligence_page.target.setText(target)
+        QMessageBox.information(
+            self,
+            "AI Case Builder",
+            "The target was loaded into Live Investigation. Confirm authorization and start the workflow.",
+        )
 
     def open_generated_case(self, case_id):
         self.refresh()
@@ -410,6 +548,11 @@ class CasesPage(QWidget):
 
     def clear_correlation(self):
         self.correlation_report = None
+        self.ai_chat_history = []
+        self.ai_message_records = []
+        self.ai_typing_timer = QTimer(self)
+        self.ai_typing_timer.timeout.connect(self._typing_tick)
+        self.ai_typing_state = None
         self.relationships.clear()
         self.correlation_text.clear()
         self.correlation_priority.setText("PRIORITY // --")
@@ -565,28 +708,240 @@ class CasesPage(QWidget):
             return
         self.ai.setEnabled(False)
         self.ai.setText("ANALYZING...")
+        self.tabs.setCurrentIndex(6)
+        self.ai_progress.setValue(8)
+        self.ai_progress.setFormat("REVIEWING SAVED EVIDENCE...")
+        self.analysis.clear()
+        self.ai_response.clear()
+        stages = [
+            (24, "CORRELATING PORTS AND SERVICES..."),
+            (43, "ASSESSING EXPOSURE CONTEXT..."),
+            (62, "COMPARING INVESTIGATION HISTORY..."),
+            (81, "BUILDING RECOMMENDATIONS..."),
+        ]
+        for delay, (value, label) in enumerate(stages, start=1):
+            QTimer.singleShot(delay * 140, lambda v=value, text=label: self._set_ai_stage(v, text))
+        QTimer.singleShot(760, lambda cid=case_id: self._complete_ai_analysis(cid))
+
+    def _set_ai_stage(self, value, label):
+        self.ai_progress.setValue(value)
+        self.ai_progress.setFormat(label)
+
+    def _complete_ai_analysis(self, case_id):
         try:
-            assessment = assess_case(self.engine.repository, case_id)
-            text = assessment.to_text()
-            self.analysis.setPlainText(text)
-            self.engine.repository.add_case_evidence(case_id, "AI", "AI investigation summary", "BLACKTERM AI", text)
-            self.engine.repository.add_case_timeline(case_id, "AI", "AI investigation completed", f"{assessment.level} risk / {assessment.confidence}% confidence")
+            brief = build_case_analyst_brief(self.engine.repository, case_id)
+            self.current_ai_brief = brief
+            self.render_ai_brief(brief)
+            text = brief.to_text()
+            self.engine.repository.add_case_evidence(case_id, "AI", "AI analyst investigation brief", "BLACKTERM AI Analyst", text)
+            self.engine.repository.add_case_timeline(case_id, "AI", "AI analyst investigation completed", f"{brief.risk_level} risk / {brief.confidence}% confidence")
             if self.event_bus:
                 from ...events import EventLevel
                 self.event_bus.emit(
-                    "case",
-                    f"Case #{case_id}: {assessment.summary}",
-                    title="AI Case Analysis Complete",
-                    level=EventLevel.AI,
-                    module="cases",
-                    metadata={"case_id": case_id, "score": assessment.score, "risk": assessment.level, "confidence": assessment.confidence},
+                    "case", brief.assessment, title="AI Analyst Complete", level=EventLevel.AI, module="cases",
+                    metadata={"case_id": case_id, "score": brief.risk_score, "risk": brief.risk_level, "confidence": brief.confidence},
                 )
-            self.load_case()
-            self.analysis.setPlainText(text)
-            self.tabs.setCurrentIndex(6)
+            self.ai_progress.setValue(100)
+            self.ai_progress.setFormat("ANALYSIS COMPLETE")
+        except Exception as exc:
+            self.ai_progress.setValue(0)
+            self.ai_progress.setFormat("ANALYSIS FAILED")
+            QMessageBox.critical(self, "AI analysis failed", str(exc))
         finally:
             self.ai.setEnabled(True)
             self.ai.setText("RUN AI ANALYSIS")
+
+    def render_ai_brief(self, brief):
+        accent = "#36e6b0" if brief.risk_score < 25 else "#f5c451" if brief.risk_score < 55 else "#ff6b8a"
+        self.ai_risk.setText(f"RISK // {brief.risk_level} {brief.risk_score}/100")
+        self.ai_risk.setStyleSheet(f"color:{accent};font-weight:800;")
+        self.ai_confidence.setText(f"CONFIDENCE // {brief.confidence}%")
+        self.ai_evidence.setText(f"EVIDENCE // {brief.evidence_count} SIGNALS")
+        quality, _ = investigation_quality(self.engine.repository, brief.case_id)
+        self.ai_quality.setText(f"QUALITY // {quality}%")
+        self.ai_status.setText(f"STATUS // {brief.status}")
+        self.ai_risk_meter.setValue(brief.risk_score)
+        self.ai_confidence_meter.setValue(brief.confidence)
+        self.ai_quality_meter.setValue(quality)
+        scans = self.engine.repository.case_scans(brief.case_id)
+        evidence_items = self.engine.repository.case_evidence(brief.case_id)
+        notes = self.engine.repository.case_notes(brief.case_id)
+        timeline = self.engine.repository.case_timeline(brief.case_id)
+        self.ai_context.setText(
+            f"AI MEMORY // CASE {brief.case_id}  •  SCANS {len(scans)}  •  EVIDENCE {len(evidence_items)}  "
+            f"•  NOTES {len(notes)}  •  TIMELINE {len(timeline)}"
+        )
+        facts = "".join(f"<li>{item}</li>" for item in brief.facts)
+        inferences = "".join(f"<li>{item}</li>" for item in brief.inferences)
+        memory = "".join(f"<li>{item}</li>" for item in brief.memory)
+        actions = "".join(f"<li>{item}</li>" for item in brief.recommendations)
+        html = (
+            '<h2 style="color:#31b7ff;">BLACKTERM AI ANALYST</h2>'
+            f'<h3 style="color:#e8f5ff;">Assessment</h3><p>{brief.assessment}</p>'
+            f'<h3 style="color:#36e6b0;">Confirmed Facts</h3><ul>{facts}</ul>'
+            f'<h3 style="color:#f5c451;">Analyst Assessment</h3><ul>{inferences}</ul>'
+            f'<h3 style="color:#c45cff;">Investigation Memory</h3><ul>{memory}</ul>'
+            f'<h3 style="color:#31b7ff;">Recommended Actions</h3><ol>{actions}</ol>'
+            '<p style="color:#8da6bd;"><b>Advisory:</b> Exposure is not proof of exploitability. Validate conclusions with authorized evidence.</p>'
+        )
+        self.analysis.setHtml(html)
+        self.ai_findings.clear()
+        for finding in brief.findings:
+            self.ai_findings.addItem(finding)
+        if self.ai_findings.count():
+            self.ai_findings.setCurrentRow(0)
+        self._reset_ai_conversation(brief)
+
+    def _reset_ai_conversation(self, brief):
+        self.ai_chat_history = []
+        self.ai_message_records = []
+        self.ai_response.clear()
+        welcome = (
+            f"Case #{brief.case_id} is loaded with {brief.evidence_count} evidence signal(s). "
+            "Ask a question and BLACKTERM will separate saved observations from analyst interpretation."
+        )
+        self._append_ai_message("BLACKTERM AI", welcome, brief.confidence, ["Current case assessment"])
+
+    def _message_card(self, record):
+        speaker = record["speaker"]
+        body = record["display_body"]
+        confidence = record.get("confidence")
+        refs = record.get("evidence_refs") or []
+        is_operator = speaker.upper() == "OPERATOR"
+        accent = "#31b7ff" if is_operator else "#36e6b0"
+        background = "#0c1d2c" if is_operator else "#101426"
+        alignment = "margin-left:9%;" if is_operator else "margin-right:9%;"
+        safe_body = escape(str(body)).replace("\n", "<br>")
+        meta = ""
+        if confidence is not None:
+            meta += f'<span style="color:#c45cff;"><b>Confidence:</b> {int(confidence)}%</span>'
+        if refs:
+            links = []
+            for index, item in enumerate(refs):
+                links.append(
+                    f'<a href="evidence://{index}" style="color:#8fd8ff;text-decoration:none;">{escape(str(item))}</a>'
+                )
+            separator = " &nbsp; | &nbsp; " if meta else ""
+            meta += separator + '<span style="color:#8da6bd;"><b>Evidence:</b> ' + " • ".join(links) + "</span>"
+        avatar = "TYLER" if is_operator else "BLACKTERM AI"
+        return (
+            f'<div style="{alignment}background:{background};border:1px solid #214764;border-radius:12px;'
+            'padding:12px;margin:8px 3px;">'
+            f'<div style="color:{accent};font-weight:800;margin-bottom:7px;">{avatar}</div>'
+            f'<div style="color:#e8f5ff;line-height:1.42;">{safe_body}</div>'
+            + (f'<div style="margin-top:9px;font-size:11px;">{meta}</div>' if meta else "")
+            + '</div>'
+        )
+
+    def _render_ai_conversation(self):
+        self.ai_response.setHtml("".join(self._message_card(record) for record in self.ai_message_records))
+        scrollbar = self.ai_response.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+
+    def _append_ai_message(self, speaker, body, confidence=None, evidence_refs=None, animate=False):
+        record = {
+            "speaker": speaker,
+            "body": str(body),
+            "display_body": "" if animate else str(body),
+            "confidence": confidence,
+            "evidence_refs": [str(item) for item in (evidence_refs or []) if item],
+        }
+        self.ai_message_records.append(record)
+        self.ai_chat_history.append((speaker, body))
+        self._render_ai_conversation()
+        if animate:
+            self.ai_typing_state = {"record": record, "position": 0}
+            self.ai_typing_timer.start(18)
+
+    def _typing_tick(self):
+        state = self.ai_typing_state
+        if not state:
+            self.ai_typing_timer.stop()
+            return
+        record = state["record"]
+        full = record["body"]
+        position = min(len(full), state["position"] + 5)
+        state["position"] = position
+        record["display_body"] = full[:position] + ("▌" if position < len(full) else "")
+        self._render_ai_conversation()
+        if position >= len(full):
+            record["display_body"] = full
+            self.ai_typing_timer.stop()
+            self.ai_typing_state = None
+            self.ai_progress.setValue(100)
+            self.ai_progress.setFormat("RESPONSE COMPLETE")
+            self.ai_question.setEnabled(True)
+            self.ask_button.setEnabled(True)
+            self.ai_question.setFocus()
+            self._render_ai_conversation()
+
+    def open_ai_evidence_reference(self, url: QUrl):
+        scheme = url.scheme().lower()
+        if scheme == "evidence":
+            self.tabs.setCurrentIndex(2)
+            if self.evidence.rowCount():
+                self.evidence.selectRow(0)
+        elif scheme == "scan":
+            self.tabs.setCurrentIndex(0)
+        else:
+            self.tabs.setCurrentIndex(3)
+
+    def ask_suggested_question(self, question):
+        self.ai_question.setText(question)
+        self.ask_ai_question()
+
+    def explain_selected_finding(self):
+        item = self.ai_findings.currentItem()
+        case_id = self.selected_case_id()
+        if not item or not case_id:
+            return
+        reply = answer_case_question(f"explain {item.text()}", self.engine.repository, case_id)
+        self.ai_explanation.setPlainText(reply.body)
+
+    def ask_ai_question(self):
+        case_id = self.selected_case_id()
+        question = self.ai_question.text().strip()
+        if not case_id or not question or self.ai_typing_timer.isActive():
+            return
+        self._append_ai_message("OPERATOR", question)
+        self.ai_question.clear()
+        self.ai_question.setEnabled(False)
+        self.ask_button.setEnabled(False)
+        stages = [
+            (18, "REVIEWING SAVED EVIDENCE..."),
+            (39, "CORRELATING CASE HISTORY..."),
+            (61, "CHECKING SUPPORTING SIGNALS..."),
+            (82, "BUILDING GROUNDED RESPONSE..."),
+        ]
+        for delay, (value, label) in enumerate(stages):
+            QTimer.singleShot(delay * 90, lambda v=value, text=label: self._set_ai_stage(v, text))
+        QTimer.singleShot(430, lambda q=question, cid=case_id: self._finish_ai_question(q, cid))
+
+    def _finish_ai_question(self, question, case_id):
+        try:
+            reply = answer_case_question(question, self.engine.repository, case_id)
+            body = f"{reply.title}\n\n{reply.body}"
+            self._append_ai_message("BLACKTERM AI", body, reply.confidence, reply.evidence_refs, animate=True)
+            for index, text in enumerate(reply.suggestions[:len(self.ai_suggestion_buttons)]):
+                button = self.ai_suggestion_buttons[index]
+                button.setText(text)
+                button.setToolTip(text)
+                try:
+                    button.clicked.disconnect()
+                except (RuntimeError, TypeError):
+                    pass
+                button.clicked.connect(lambda checked=False, value=text: self.ask_suggested_question(value))
+        except Exception as exc:
+            self._append_ai_message("BLACKTERM AI", f"The case question could not be answered: {exc}", 0, [], animate=True)
+
+    def copy_ai_brief(self):
+        case_id = self.selected_case_id()
+        if not case_id:
+            return
+        brief = getattr(self, "current_ai_brief", None) or build_case_analyst_brief(self.engine.repository, case_id)
+        from PySide6.QtWidgets import QApplication
+        QApplication.clipboard().setText(brief.to_text())
+        self._append_ai_message("BLACKTERM AI", "Executive brief copied to the clipboard.", brief.confidence, ["Current case assessment"])
 
     def replay_timeline(self, index):
         if not self.timeline_events:

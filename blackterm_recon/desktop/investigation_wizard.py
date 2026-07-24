@@ -12,7 +12,7 @@ from ..autonomous_workflow import AutonomousWorkflowOptions
 
 
 class InvestigationWizard(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, prefill_target: str = "", ai_mode: bool = False):
         super().__init__(parent)
         self.setWindowTitle("BLACKTERM // New Autonomous Investigation")
         self.setModal(True)
@@ -20,7 +20,7 @@ class InvestigationWizard(QDialog):
         root = QVBoxLayout(self)
         title = QLabel("NEW AUTONOMOUS INVESTIGATION")
         title.setObjectName("pageTitle")
-        subtitle = QLabel("Create one case and run selected authorized intelligence stages end to end.")
+        subtitle = QLabel("AI Case Builder will create one case and run selected authorized intelligence stages end to end." if ai_mode else "Create one case and run selected authorized intelligence stages end to end.")
         subtitle.setObjectName("muted")
         root.addWidget(title)
         root.addWidget(subtitle)
@@ -28,8 +28,9 @@ class InvestigationWizard(QDialog):
         panel = QFrame()
         panel.setObjectName("panel")
         form = QFormLayout(panel)
-        self.name = QLineEdit(f"Operation {datetime.now():%Y-%m-%d %H:%M}")
-        self.target = QLineEdit()
+        default_name = f"AI Investigation // {prefill_target}" if ai_mode and prefill_target else f"Operation {datetime.now():%Y-%m-%d %H:%M}"
+        self.name = QLineEdit(default_name)
+        self.target = QLineEdit(prefill_target)
         self.target.setPlaceholderText("Authorized domain, IP address, or hostname")
         self.profile = QComboBox()
         self.profile.addItem("Quick", "quick")

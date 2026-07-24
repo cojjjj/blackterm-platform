@@ -1,0 +1,5 @@
+1. Close BLACKTERM.
+2. Extract this ZIP.
+3. Drag the included blackterm_recon folder into the root of your existing BLACKTERM project.
+4. Choose Replace the files in the destination when Windows asks.
+5. Double-click RUN_BLACKTERM.bat.

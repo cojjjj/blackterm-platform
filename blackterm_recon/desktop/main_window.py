@@ -195,11 +195,11 @@ class MainWindow(QMainWindow):
         self.command_palette.raise_()
         self.command_palette.activateWindow()
 
-    def start_new_investigation(self):
+    def start_new_investigation(self, prefill_target: str = "", ai_mode: bool = False):
         if self.workflow_thread is not None and self.workflow_thread.isRunning():
             QMessageBox.information(self, "Investigation running", "An autonomous investigation is already active.")
             return
-        wizard = InvestigationWizard(self)
+        wizard = InvestigationWizard(self, prefill_target=prefill_target, ai_mode=ai_mode)
         if wizard.exec() != wizard.DialogCode.Accepted:
             return
         options = wizard.options()
