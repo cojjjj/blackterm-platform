@@ -20,7 +20,13 @@ Reconnaissance • Attack Surface Intelligence • OSINT • Threat Intelligence
 *"One investigation. One platform."*
 
 </div>
+<p align="center">
 
+<img src="https://img.shields.io/badge/Python-3.11+-blue">
+<img src="https://img.shields.io/badge/Platform-Windows-success">
+<img src="https://img.shields.io/badge/License-MIT-green">
+
+</p>
 
 ## 📚 Documentation
 
@@ -205,34 +211,54 @@ Understand how evidence connects through an interactive graph of:
 Automatically summarize findings, identify patterns, and assist analysts with investigation reporting.
 
 ---
+# 🚀 Quick Start (Windows)
 
-# 🚀 Quick Start
-
-Clone the repository:
+## 1. Clone the repository
 
 ```bash
 git clone https://github.com/cojjjj/blackterm-platform.git
-```
-
-Navigate into the project:
-
-```bash
 cd blackterm-platform
 ```
 
-Install dependencies:
+## 2. Create a virtual environment
 
 ```bash
-pip install -r requirements.txt
+python -m venv .venv
 ```
 
-Launch BLACKTERM:
+## 3. Activate it
+
+**Command Prompt**
+
+```cmd
+.venv\Scripts\activate
+```
+
+**PowerShell**
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+## 4. Install BLACKTERM
 
 ```bash
-python main.py
+pip install -e .
 ```
 
----
+*(or `pip install -r requirements.txt` if you aren't using `pyproject.toml`)*
+
+## 5. Launch BLACKTERM
+
+```bash
+python -m blackterm_recon
+```
+
+or
+
+```cmd
+RUN_BLACKTERM.bat
+```
 
 # 📌 Project Goals
 
@@ -1084,24 +1110,24 @@ Built with ❤️ for the cybersecurity community.
 
  STATUS............... ONLINE
  DEVELOPMENT.......... ACTIVE
- SOURCE LINES......... 18,734
- TOTAL TRACKED LINES.. 22,201
- PYTHON LINES......... 20,210
- TEST LINES........... 1,476
- DOCUMENTATION LINES.. 1,871
+ SOURCE LINES......... 19,699
+ TOTAL TRACKED LINES.. 23,458
+ PYTHON LINES......... 21,321
+ TEST LINES........... 1,622
+ DOCUMENTATION LINES.. 2,017
 
- PYTHON FILES......... 156
- PROJECT FILES........ 178
+ PYTHON FILES......... 159
+ PROJECT FILES........ 185
  MODULES.............. 90
  DESKTOP PAGES........ 18
- TESTS DISCOVERED..... 113
- COMMITS.............. 53
+ TESTS DISCOVERED..... 123
+ COMMITS.............. 61
  CONTRIBUTORS......... 3
 
  LANGUAGE TELEMETRY
- Python: 20,210 • Markdown: 1,871 • YAML: 59 • TOML: 37 • JSON: 24
+ Python: 21,321 • Markdown: 2,017 • YAML: 59 • TOML: 37 • JSON: 24
 
- LAST REFRESH......... 2026-07-24T00:23:51+00:00
+ LAST REFRESH......... 2026-07-24T02:06:15+00:00
  NEXT OBJECTIVE....... AUTONOMOUS OSINT ENGINE
 ```
 
